@@ -1,19 +1,29 @@
 /**
  * Mengisi aktivitas contoh selama delapan minggu terakhir.
  *
- * Kejadian dibuat lewat /api/ingest yang sesungguhnya — ditandatangani,
- * dirantai, dan diverifikasi seperti kiriman alat sungguhan. Yang dibuat-buat
- * hanya WAKTUNYA: recorded_at disebar mundur supaya grafik tren punya isi.
+ * Kejadian ditandatangani dan dirantai memakai fungsi yang sama persis
+ * dengan yang dipakai /api/ingest, jadi bukti yang dihasilkan sungguhan
+ * dan lolos verifikasi. Yang dilewati hanya lompatan HTTP-nya: 490
+ * kejadian lewat HTTP berarti sekitar tiga ribu kueri melintasi
+ * Indonesia ke Ohio, dan itu terlalu rapuh untuk dijalankan berulang.
  *
- * Jalankan dengan dev server hidup:  npx tsx scripts/isi-demo.ts
+ * Jalur HTTP-nya tetap diuji terpisah oleh scripts/uji-ingest.ts.
+ *
+ * Jalankan:  npx tsx scripts/isi-demo.ts
  */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { PrismaClient } from "@prisma/client";
-import { Amplop, tandatangani } from "../src/lib/bukti";
+import { PrismaClient, Prisma } from "@prisma/client";
+import {
+  AMBANG_GPS_M,
+  Amplop,
+  hitungHash,
+  jarakMeter,
+  pesanTertandatangan,
+  tandatangani,
+} from "../src/lib/bukti";
 
-const URL = process.env.URL_APP ?? "http://localhost:3000";
 const db = new PrismaClient();
 const kunci: Array<{ deviceId: string; privateKey: string }> = JSON.parse(
   readFileSync(path.join(process.cwd(), "prisma", "perangkat-simulasi.json"), "utf8"),
@@ -21,27 +31,8 @@ const kunci: Array<{ deviceId: string; privateKey: string }> = JSON.parse(
 
 const acak = (a: number, b: number) => a + Math.random() * (b - a);
 const bulat = (a: number, b: number) => Math.round(acak(a, b));
-const jeda = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Dev server kadang membalas kosong saat sedang mengompilasi ulang. */
-async function kirimUlangKalauPerlu(url: string, body: string, coba = 8) {
-  for (let i = 1; i <= coba; i++) {
-    try {
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body,
-      });
-      const teks = await r.text();
-      if (!teks) throw new Error("balasan kosong");
-      return JSON.parse(teks) as { ok?: boolean; hash?: string; pesan?: string };
-    } catch (e) {
-      if (i === coba) throw e;
-      await jeda(600 * i);
-    }
-  }
-  throw new Error("tidak tercapai");
-}
+const kunciTrip = (petugasId: number, d: Date) =>
+  `${petugasId}|${d.toISOString().slice(0, 10)}`;
 
 async function main() {
   console.log("Mengosongkan transaksi dan bukti lama…");
@@ -54,42 +45,55 @@ async function main() {
   await db.perangkat.updateMany({ data: { lastSeq: 0, lastHash: null } });
   await db.warung.updateMany({ data: { statusVerifikasi: "BELUM" } });
 
-  const warung = await db.warung.findMany({
-    where: { kecamatanId: { not: null } },
-    select: { id: true, lat: true, lon: true, estimasiLMinggu: true, kecamatan: { select: { nama: true } } },
-  });
-  const petugas = await db.pengguna.findMany({ where: { peran: "PETUGAS" } });
-  console.log(`Warung tersedia: ${warung.length} · petugas: ${petugas.length}`);
+  const [warung, petugas, perangkat, harga, titikKumpul] = await Promise.all([
+    db.warung.findMany({
+      where: { kecamatanId: { not: null } },
+      select: { id: true, lat: true, lon: true, estimasiLMinggu: true },
+    }),
+    db.pengguna.findMany({ where: { peran: "PETUGAS" }, select: { id: true } }),
+    db.perangkat.findMany({ select: { id: true, deviceId: true } }),
+    db.harga.findFirst({ orderBy: { berlakuDari: "desc" } }),
+    db.titikKumpul.findMany({ select: { id: true } }),
+  ]);
+  const rpPerKg = harga?.rpPerKg ?? 6000;
+  const idPerangkat = new Map(perangkat.map((p) => [p.deviceId, p.id]));
 
-  // Warung yang ikut program: 55% dari yang punya kecamatan.
-  // Sisanya sengaja dibiarkan nol supaya "berisiko" dan "belum pernah" ada isinya.
   const ikut = warung.filter(() => Math.random() < 0.55);
-  console.log(`Warung yang ikut program: ${ikut.length}`);
+  console.log(`Warung ${warung.length} · ikut program ${ikut.length} · petugas ${petugas.length}`);
 
+  interface Baris {
+    kejadian: Prisma.KejadianAlatCreateManyInput;
+    warungId: number;
+    petugasId: number;
+    bersihG: number;
+    lat: number;
+    lon: number;
+    gpsAkurasi: number;
+    jarakM: number;
+    waktu: Date;
+  }
+
+  const baris: Baris[] = [];
   const seq = new Map(kunci.map((k) => [k.deviceId, 0]));
-  const hash = new Map<string, string | null>(kunci.map((k) => [k.deviceId, null]));
-  let terkirim = 0;
-  let ditolak = 0;
+  const rantai = new Map<string, string | null>(kunci.map((k) => [k.deviceId, null]));
 
   for (let minggu = 7; minggu >= 0; minggu--) {
-    // makin dekat ke sekarang, makin banyak warung yang terjangkau
     const porsi = 0.35 + (7 - minggu) * 0.055;
-    const sasaran = ikut.filter(() => Math.random() < porsi);
-
-    for (const w of sasaran) {
+    for (const w of ikut.filter(() => Math.random() < porsi)) {
       const k = kunci[bulat(0, kunci.length - 1)];
       const pet = petugas[bulat(0, petugas.length - 1)];
       const s = (seq.get(k.deviceId) ?? 0) + 1;
       seq.set(k.deviceId, s);
 
       const waktu = new Date(
-        Date.now() - minggu * 7 * 86_400_000 - bulat(0, 6) * 86_400_000 - bulat(0, 8) * 3_600_000,
+        Date.now() - minggu * 7 * 86_400_000 - bulat(0, 6) * 86_400_000 - bulat(1, 9) * 3_600_000,
       );
-
-      // bobot mengikuti estimasi warung, dengan sebaran wajar
       const liter = Math.max(1, w.estimasiLMinggu * acak(0.45, 1.15));
-      const bersih = Math.round(liter * 0.91 * 1000);
-      const wadah = bulat(900, 1600);
+      const bersihG = Math.round(liter * 0.91 * 1000);
+      const wadahG = bulat(900, 1600);
+      const lat = w.lat + acak(-0.0004, 0.0004);
+      const lon = w.lon + acak(-0.0004, 0.0004);
+      const gpsAkurasi = bulat(6, 22);
 
       const a: Amplop = {
         device_id: k.deviceId,
@@ -97,15 +101,15 @@ async function main() {
         event_id: `${k.deviceId}:${s}`,
         type: "PICKUP",
         recorded_at: waktu.toISOString(),
-        prev_hash: hash.get(k.deviceId) ?? null,
+        prev_hash: rantai.get(k.deviceId) ?? null,
         payload: {
           warung_id: w.id,
           petugas_id: pet.id,
-          gross_g: bersih + wadah,
-          tare_g: wadah,
-          lat: w.lat + acak(-0.0004, 0.0004),
-          lon: w.lon + acak(-0.0004, 0.0004),
-          gps_accuracy_m: bulat(6, 22),
+          gross_g: bersihG + wadahG,
+          tare_g: wadahG,
+          lat,
+          lon,
+          gps_accuracy_m: gpsAkurasi,
           stable_ms: bulat(1100, 2200),
           confirm_code: String(bulat(1000, 9999)),
           qr_ok: true,
@@ -114,59 +118,135 @@ async function main() {
         },
       };
       a.sig = tandatangani(a, k.privateKey);
+      const pesan = pesanTertandatangan(a);
+      const hash = hitungHash(a);
+      rantai.set(k.deviceId, hash);
 
-      const b = await kirimUlangKalauPerlu(`${URL}/api/ingest`, JSON.stringify(a));
-      if (b.ok) {
-        hash.set(k.deviceId, b.hash ?? null);
-        terkirim++;
-      } else ditolak++;
+      baris.push({
+        kejadian: {
+          perangkatId: idPerangkat.get(k.deviceId)!,
+          seq: s,
+          eventId: a.event_id,
+          type: "PICKUP",
+          recordedAt: waktu,
+          receivedAt: waktu,
+          payload: a.payload as Prisma.InputJsonValue,
+          pesanKanonik: pesan,
+          prevHash: a.prev_hash,
+          hash,
+          sig: a.sig,
+          terverifikasi: true,
+        },
+        warungId: w.id,
+        petugasId: pet.id,
+        bersihG,
+        lat,
+        lon,
+        gpsAkurasi,
+        jarakM: Math.round(jarakMeter(lat, lon, w.lat, w.lon)),
+        waktu,
+      });
     }
-    process.stdout.write(`  minggu -${minggu}: total ${terkirim} kejadian\n`);
+  }
+  console.log(`Kejadian dibangun & ditandatangani: ${baris.length}`);
+
+  const POTONG = 250;
+  for (let i = 0; i < baris.length; i += POTONG) {
+    await db.kejadianAlat.createMany({ data: baris.slice(i, i + POTONG).map((b) => b.kejadian) });
+    console.log(`  kejadian tersimpan ${Math.min(i + POTONG, baris.length)}/${baris.length}`);
   }
 
-  // Samakan waktu transaksi dengan waktu yang dilaporkan alat,
-  // supaya grafik tren memakai waktu kejadian bukan waktu penyimpanan.
-  await db.$executeRaw`
-    UPDATE penjemputan p
-    SET "dibuatAt" = k."recordedAt"
-    FROM kejadian_alat k
-    WHERE p."kejadianAlatId" = k.id`;
-  await db.$executeRaw`
-    UPDATE trip t
-    SET tanggal = sub.awal
-    FROM (SELECT "tripId" AS id, MIN("dibuatAt") AS awal
-          FROM penjemputan WHERE "tripId" IS NOT NULL GROUP BY "tripId") sub
-    WHERE t.id = sub.id`;
+  const idKejadian = new Map(
+    (
+      await db.kejadianAlat.findMany({
+        where: { eventId: { in: baris.map((b) => b.kejadian.eventId) } },
+        select: { id: true, eventId: true },
+      })
+    ).map((k) => [k.eventId, k.id]),
+  );
 
-  // Tutup sebagian trip dengan setoran supaya susut rantai punya nilai terukur.
-  const trip = await db.trip.findMany({ where: { status: "BERJALAN" } });
-  let ditutup = 0;
-  for (const t of trip.slice(0, Math.floor(trip.length * 0.75))) {
-    const susut = Math.round(t.totalGWarung * acak(0.001, 0.02));
-    await db.trip.update({
-      where: { id: t.id },
-      data: {
-        status: "DISETOR",
-        totalGTitikKumpul: t.totalGWarung - susut,
+  /* -------- trip: satu per petugas per hari -------- */
+  const ringkasTrip = new Map<string, { petugasId: number; tanggal: Date; totalG: number }>();
+  for (const b of baris) {
+    const kk = kunciTrip(b.petugasId, b.waktu);
+    const t = ringkasTrip.get(kk) ?? { petugasId: b.petugasId, tanggal: b.waktu, totalG: 0 };
+    t.totalG += b.bersihG;
+    ringkasTrip.set(kk, t);
+  }
+
+  await db.trip.createMany({
+    data: [...ringkasTrip.values()].map((t) => {
+      const tutup = Math.random() < 0.8;
+      const susut = tutup ? Math.round(t.totalG * acak(0.001, 0.019)) : null;
+      return {
+        petugasId: t.petugasId,
+        tanggal: t.tanggal,
+        status: tutup ? ("DISETOR" as const) : ("BERJALAN" as const),
+        totalGWarung: t.totalG,
+        totalGTitikKumpul: tutup ? t.totalG - susut! : null,
         susutG: susut,
-        susutPersen: Number(((susut / Math.max(t.totalGWarung, 1)) * 100).toFixed(3)),
-      },
+        susutPersen: tutup ? Number(((susut! / Math.max(t.totalG, 1)) * 100).toFixed(3)) : null,
+        titikKumpulId: tutup
+          ? titikKumpul[Math.floor(Math.random() * titikKumpul.length)]?.id
+          : null,
+      };
+    }),
+  });
+
+  const idTrip = new Map(
+    (await db.trip.findMany({ select: { id: true, petugasId: true, tanggal: true } })).map((t) => [
+      kunciTrip(t.petugasId, t.tanggal),
+      t.id,
+    ]),
+  );
+
+  for (let i = 0; i < baris.length; i += POTONG) {
+    await db.penjemputan.createMany({
+      data: baris.slice(i, i + POTONG).map((b) => ({
+        warungId: b.warungId,
+        petugasId: b.petugasId,
+        perangkatId: b.kejadian.perangkatId,
+        kejadianAlatId: idKejadian.get(b.kejadian.eventId)!,
+        tripId: idTrip.get(kunciTrip(b.petugasId, b.waktu)) ?? null,
+        beratBersihG: b.bersihG,
+        lat: b.lat,
+        lon: b.lon,
+        gpsAkurasiM: b.gpsAkurasi,
+        jarakDariWarungM: b.jarakM,
+        gpsOk: b.jarakM <= AMBANG_GPS_M,
+        qrOk: true,
+        konfirmasiOk: true,
+        hargaPerKg: rpPerKg,
+        nilaiRp: Math.round((b.bersihG / 1000) * rpPerKg),
+        dibuatAt: b.waktu,
+      })),
     });
-    ditutup++;
+    console.log(`  penjemputan tersimpan ${Math.min(i + POTONG, baris.length)}/${baris.length}`);
   }
 
-  const ringkas = await db.penjemputan.aggregate({
+  for (const [deviceId, hash] of rantai)
+    await db.perangkat.update({
+      where: { deviceId },
+      data: { lastHash: hash, lastSeq: seq.get(deviceId) ?? 0, lastSeen: new Date() },
+    });
+
+  await db.warung.updateMany({
+    where: { id: { in: [...new Set(baris.map((b) => b.warungId))] } },
+    data: { statusVerifikasi: "DIKUNJUNGI" },
+  });
+
+  const rk = await db.penjemputan.aggregate({
     _sum: { beratBersihG: true, nilaiRp: true },
     _count: true,
   });
   const aktif = await db.penjemputan.groupBy({ by: ["warungId"] });
+  const disetor = await db.trip.count({ where: { status: "DISETOR" } });
 
-  console.log(`\nKejadian terkirim ${terkirim} · ditolak ${ditolak}`);
-  console.log(`Penjemputan  : ${ringkas._count}`);
+  console.log(`\nPenjemputan  : ${rk._count}`);
+  console.log(`Trip         : ${ringkasTrip.size} (${disetor} disetor)`);
   console.log(`Warung aktif : ${aktif.length} dari ${warung.length}`);
-  console.log(`Total bobot  : ${((ringkas._sum.beratBersihG ?? 0) / 1000).toFixed(1)} kg`);
-  console.log(`Total nilai  : Rp ${(ringkas._sum.nilaiRp ?? 0).toLocaleString("id-ID")}`);
-  console.log(`Trip disetor : ${ditutup} dari ${trip.length}`);
+  console.log(`Total bobot  : ${((rk._sum.beratBersihG ?? 0) / 1000).toFixed(1)} kg`);
+  console.log(`Total nilai  : Rp ${(rk._sum.nilaiRp ?? 0).toLocaleString("id-ID")}`);
   await db.$disconnect();
 }
 
