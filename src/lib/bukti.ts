@@ -61,6 +61,36 @@ export function hitungHash(a: Amplop): string {
     .digest("hex");
 }
 
+/**
+ * Memverifikasi tanda tangan atas PESAN yang tersimpan apa adanya.
+ *
+ * Ini bentuk yang benar untuk pemeriksaan ulang: bita yang ditandatangani
+ * disimpan utuh, jadi tidak ada peluang berubah akibat pembulatan di
+ * penyimpanan. Menyusun ulang pesan dari kolom JSON tidak aman —
+ * PostgreSQL JSONB memotong angka pecahan di 16 digit penting.
+ */
+export function verifikasiPesan(
+  pesan: string,
+  sigB64: string,
+  publicKeyB64: string,
+): boolean {
+  try {
+    const kunci = createPublicKey({
+      key: Buffer.from(publicKeyB64, "base64"),
+      format: "der",
+      type: "spki",
+    });
+    return verify(null, Buffer.from(pesan, "utf8"), kunci, Buffer.from(sigB64, "base64"));
+  } catch {
+    return false;
+  }
+}
+
+/** Hash berantai dihitung dari pesan tersimpan, bukan dari muatan hasil parsing. */
+export function hitungHashDariPesan(pesan: string, prevHash: string | null): string {
+  return createHash("sha256").update(pesan + (prevHash ?? "")).digest("hex");
+}
+
 export function verifikasiTandaTangan(a: Amplop, publicKeyB64: string): boolean {
   if (!a.sig) return false;
   try {

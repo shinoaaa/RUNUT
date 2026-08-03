@@ -22,6 +22,7 @@ import {
   Amplop,
   hitungHash,
   jarakMeter,
+  pesanTertandatangan,
   verifikasiTandaTangan,
 } from "@/lib/bukti";
 import { Prisma } from "@prisma/client";
@@ -76,7 +77,8 @@ export async function POST(req: Request) {
   if ((a.prev_hash ?? null) !== (perangkat.lastHash ?? null))
     catatan.push("RANTAI_PUTUS: prev_hash tidak cocok dengan hash terakhir");
 
-  // 6. hash
+  // 6. hash, dihitung dari pesan yang ditandatangani
+  const pesan = pesanTertandatangan(a);
   const hash = hitungHash(a);
 
   // 7 & 8. simpan lalu turunkan
@@ -89,6 +91,7 @@ export async function POST(req: Request) {
         type: a.type,
         recordedAt: new Date(a.recorded_at),
         payload: a.payload as Prisma.InputJsonValue,
+        pesanKanonik: pesan,
         prevHash: a.prev_hash ?? null,
         hash,
         sig: a.sig ?? "",

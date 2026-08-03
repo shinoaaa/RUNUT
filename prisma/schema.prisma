@@ -244,6 +244,13 @@ model KejadianAlat {
 
   payload Json
 
+  /// Bita yang BENAR-BENAR ditandatangani alat, disimpan apa adanya.
+  /// Tidak boleh disusun ulang dari kolom payload: PostgreSQL JSONB
+  /// memotong angka pecahan di 16 digit penting, sehingga koordinat GPS
+  /// kehilangan digit terakhirnya dan tanda tangan jadi gagal diverifikasi
+  /// padahal datanya tidak diubah siapa pun.
+  pesanKanonik String @default("")
+
   prevHash String?
   hash     String
   sig      String

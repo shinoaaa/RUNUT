@@ -24,7 +24,7 @@ const bulat = (a: number, b: number) => Math.round(acak(a, b));
 const jeda = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Dev server kadang membalas kosong saat sedang mengompilasi ulang. */
-async function kirimUlangKalauPerlu(url: string, body: string, coba = 4) {
+async function kirimUlangKalauPerlu(url: string, body: string, coba = 8) {
   for (let i = 1; i <= coba; i++) {
     try {
       const r = await fetch(url, {
@@ -37,7 +37,7 @@ async function kirimUlangKalauPerlu(url: string, body: string, coba = 4) {
       return JSON.parse(teks) as { ok?: boolean; hash?: string; pesan?: string };
     } catch (e) {
       if (i === coba) throw e;
-      await jeda(400 * i);
+      await jeda(600 * i);
     }
   }
   throw new Error("tidak tercapai");
