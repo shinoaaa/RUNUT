@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { RegistriWarung } from "@/components/RegistriWarung";
 import { KG_PER_LITER, statusWarung } from "@/lib/format";
-import type { TitikWarung } from "@/components/peta/PetaWarung";
+import type { TitikWarung } from "@/components/peta/tipe";
 
 export const metadata = { title: "Registri Warung" };
 export const dynamic = "force-dynamic";
@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 const MINGGU_PER_BULAN = 30 / 7;
 
 export default async function HalamanRegistri() {
+  // Halaman ini force-dynamic dan dirender di server tiap permintaan,
+  // jadi membaca jam saat ini memang disengaja.
+  // eslint-disable-next-line react-hooks/purity
   const sebulanLalu = new Date(Date.now() - 30 * 24 * 3600 * 1000);
 
   const [warung, terjemput, kecamatan] = await Promise.all([

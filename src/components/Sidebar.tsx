@@ -31,7 +31,13 @@ const MENU = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({
+  pengguna,
+  keluar,
+}: {
+  pengguna: { nama: string; peran: string };
+  keluar: () => Promise<void>;
+}) {
   const path = usePathname();
   const [buka, setBuka] = useState(false);
 
@@ -80,8 +86,18 @@ export function Sidebar() {
       </div>
 
       <div className="border-t border-white/12 px-2 pt-3">
-        <p className="text-sm text-white/85">Dinas Lingkungan Hidup</p>
-        <p className="text-[11px] text-white/45">Kabupaten Bekasi</p>
+        <p className="truncate text-sm text-white/85">{pengguna.nama}</p>
+        <p className="text-[11px] capitalize text-white/45">
+          {pengguna.peran.toLowerCase()} · Kabupaten Bekasi
+        </p>
+        <form action={keluar}>
+          <button
+            type="submit"
+            className="mt-2 text-[12px] text-white/60 underline underline-offset-4 hover:text-white"
+          >
+            Keluar
+          </button>
+        </form>
       </div>
     </nav>
   );

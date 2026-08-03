@@ -26,6 +26,25 @@ type Baris = {
   catatan?: string[];
 };
 
+interface Balasan {
+  ok?: boolean;
+  duplikat?: boolean;
+  pesan?: string;
+  catatan?: string[];
+  beratBersihG?: number;
+  nilaiRp?: number;
+  gpsOk?: boolean;
+  jarakM?: number;
+  susutG?: number;
+  susutPersen?: number;
+}
+
+interface HasilKirim {
+  status?: number;
+  keterangan?: string;
+  balasan?: Balasan;
+}
+
 export function Simulator({
   alat,
   warung,
@@ -50,15 +69,15 @@ export function Simulator({
   const w = warung.find((x) => x.id === warungId);
   const bersih = Math.max(0, gross - tare);
 
-  function catat(judul: string, hasil: any, keterangan?: string) {
-    const b = hasil?.balasan ?? {};
-    const ok = hasil?.status === 200 && b?.ok && !b?.duplikat;
+  function catat(judul: string, hasil: HasilKirim, keterangan?: string) {
+    const b: Balasan = hasil?.balasan ?? {};
+    const ok = Boolean(hasil?.status === 200 && b?.ok && !b?.duplikat);
     const rinci = b?.duplikat
       ? "Ditolak sebagai duplikat"
       : b?.pesan
         ? b.pesan
-        : b?.beratBersihG
-          ? `${angka(b.beratBersihG / 1000, 2)} kg · ${rupiah(b.nilaiRp)} · GPS ${b.gpsOk ? "cocok" : `meleset ${b.jarakM} m`}`
+        : b?.beratBersihG !== undefined
+          ? `${angka(b.beratBersihG / 1000, 2)} kg · ${rupiah(b.nilaiRp ?? 0)} · GPS ${b.gpsOk ? "cocok" : `meleset ${b.jarakM} m`}`
           : b?.susutG !== undefined
             ? `Susut ${angka(b.susutG)} g (${angka(b.susutPersen ?? 0, 2)}%)`
             : `HTTP ${hasil?.status}`;

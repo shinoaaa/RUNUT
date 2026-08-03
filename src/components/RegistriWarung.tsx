@@ -14,8 +14,8 @@ import {
   cn,
 } from "@/components/ui";
 import { LABEL_STATUS, StatusWarung, angka } from "@/lib/format";
-import type { TitikWarung } from "@/components/peta/PetaWarung";
-import { LegendaWarung } from "@/components/peta/PetaWarung";
+import type { TitikWarung } from "@/components/peta/tipe";
+import { LegendaWarung } from "@/components/peta/LegendaWarung";
 
 // Leaflet menyentuh window, jadi peta hanya dimuat di peramban.
 const PetaWarung = dynamic(
