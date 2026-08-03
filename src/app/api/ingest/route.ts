@@ -111,7 +111,13 @@ export async function POST(req: Request) {
     });
 
     if (a.type === "PICKUP") {
-      const turunan = await turunkanPenjemputan(tx, kejadian.id, perangkat.id, p);
+      const turunan = await turunkanPenjemputan(
+        tx,
+        kejadian.id,
+        perangkat.id,
+        p,
+        kejadian.recordedAt,
+      );
       return { kejadianId: kejadian.id, ...turunan };
     }
 
@@ -142,6 +148,7 @@ async function turunkanPenjemputan(
   kejadianAlatId: number,
   perangkatId: number,
   p: Record<string, number | string | undefined>,
+  waktuKejadian: Date,
 ) {
   const warungId = Number(p.warung_id);
   const petugasId = Number(p.petugas_id);
@@ -163,14 +170,23 @@ async function turunkanPenjemputan(
   const rpPerKg = harga?.rpPerKg ?? 6000;
   const nilaiRp = Math.round((beratBersihG / 1000) * rpPerKg);
 
-  // satu trip per petugas per hari
-  const awalHari = new Date();
+  // Satu trip per petugas per hari, memakai tanggal menurut ALAT.
+  // Kalau memakai tanggal server, kiriman susulan dari area tanpa sinyal
+  // akan salah masuk ke trip hari berikutnya.
+  const awalHari = new Date(waktuKejadian);
   awalHari.setHours(0, 0, 0, 0);
+  const akhirHari = new Date(awalHari);
+  akhirHari.setDate(akhirHari.getDate() + 1);
+
   let trip = await tx.trip.findFirst({
-    where: { petugasId, tanggal: { gte: awalHari }, status: "BERJALAN" },
+    where: {
+      petugasId,
+      tanggal: { gte: awalHari, lt: akhirHari },
+      status: { in: ["BERJALAN", "DISETOR"] },
+    },
   });
   trip ??= await tx.trip.create({
-    data: { petugasId, tanggal: new Date(), status: "BERJALAN" },
+    data: { petugasId, tanggal: waktuKejadian, status: "BERJALAN" },
   });
 
   const penjemputan = await tx.penjemputan.create({
