@@ -1,0 +1,17 @@
+[
+  {
+    "deviceId": "SCL-BKS-001",
+    "publicKey": "MCowBQYDK2VwAyEA7DTJ9Z/3bXPL6d/cmKqkOtLJn4Ga1Uz9nXN7omC7xN0=",
+    "privateKey": "MC4CAQAwBQYDK2VwBCIEIKstZva+4o8ls5QuTXAQ7rx9FXnx+cbIzw+AzK9vyvFM"
+  },
+  {
+    "deviceId": "SCL-BKS-002",
+    "publicKey": "MCowBQYDK2VwAyEA32clIrZkSLgCuy72w9cjJgR0kgp+tHKWAX1Ex+0FDHY=",
+    "privateKey": "MC4CAQAwBQYDK2VwBCIEIOftbWV+RzIok4ZLwDR+k/fFBOxEC2nL3YeigIor60jz"
+  },
+  {
+    "deviceId": "SCL-BKS-003",
+    "publicKey": "MCowBQYDK2VwAyEA/aFN2LQYJy/rxDlffp6oWsmZ04Z9MZDylutG8l1u0IQ=",
+    "privateKey": "MC4CAQAwBQYDK2VwBCIEIGCzTilDdmFKT08Gz+5aZHJSujQdvvV+JGRrfi3LXDrt"
+  }
+]
