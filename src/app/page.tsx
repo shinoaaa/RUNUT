@@ -1,65 +1,111 @@
 import Image from "next/image";
+import {
+  BilahDalamBaris,
+  KartuAngka,
+  Kosong,
+  Panel,
+  Pil,
+  Tabel,
+  TagKeyakinan,
+  Td,
+  Th,
+  Tombol,
+} from "@/components/ui";
 
+/**
+ * Halaman sementara: etalase sistem desain.
+ * Dipakai untuk memastikan token dan komponen dasar sudah benar
+ * sebelum halaman sebenarnya dibangun. Akan diganti oleh Beranda.
+ */
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto w-full max-w-5xl px-6 py-10">
+      <header className="mb-8 flex items-center gap-3">
+        <Image src="/brand/logomark.svg" alt="" width={40} height={40} className="text-brand" />
+        <div>
+          <h1 className="text-[26px] font-bold leading-none">RUNUT</h1>
+          <p className="mt-1 text-sm text-ink-2">
+            Etalase sistem desain — bukan halaman akhir
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </header>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KartuAngka label="Tingkat Tangkap" angka="31,4" satuan="%" catatan="4,2% vs bulan lalu" arah="naik" />
+        <KartuAngka label="Terjemput" angka="12.847" satuan="kg" catatan="bulan ini" />
+        <KartuAngka label="Warung Aktif" angka="284" satuan="/ 906" catatan="31% dari terdata" />
+        <KartuAngka label="Nilai" angka="77,1" satuan="jt" catatan="tahun berjalan" />
+      </div>
+
+      <p className="mt-8 mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">
+        Kebocoran
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <KartuAngka label="Susut Rantai" angka="63" satuan="kg" catatan="selisih timbang warung vs titik kumpul" keyakinan="terukur" />
+        <KartuAngka label="Bocor di Warung" angka="± 4.100" satuan="kg" catatan="estimasi dikurangi yang dijemput" keyakinan="estimasi" />
+        <KartuAngka label="Di Luar Jangkauan" angka="± 21.500" satuan="kg" catatan="warung belum masuk program" keyakinan="model" />
+      </div>
+
+      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+        <Panel judul="Pil status & tombol">
+          <div className="flex flex-wrap gap-2">
+            <Pil nada="ok" titik>Rutin</Pil>
+            <Pil nada="warn" titik>Jarang</Pil>
+            <Pil nada="bahaya" titik>Berisiko</Pil>
+            <Pil nada="netral" titik>Belum pernah</Pil>
+            <Pil nada="info">Diminta warung</Pil>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Tombol>Susun rute hari ini</Tombol>
+            <Tombol nada="kedua">Impor CSV</Tombol>
+            <Tombol nada="bahaya">Hapus</Tombol>
+            <Tombol nada="teks">Lihat asumsi</Tombol>
+            <Tombol disabled>Terkunci</Tombol>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <TagKeyakinan nilai="terukur" />
+            <TagKeyakinan nilai="estimasi" />
+            <TagKeyakinan nilai="model" />
+          </div>
+        </Panel>
+
+        <Panel judul="Kecamatan teratas" padat>
+          <Tabel>
+            <thead>
+              <tr>
+                <Th>Kecamatan</Th>
+                <Th num>Warung</Th>
+                <Th>Cakupan</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Cikarang Pusat", 79, 61.2],
+                ["Cikarang Selatan", 40, 44.8],
+                ["Tambun Selatan", 35, 38.1],
+                ["Babelan", 14, 12.4],
+                ["Tambun Utara", 14, 11.9],
+              ].map(([nama, jml, cak]) => (
+                <tr key={nama as string}>
+                  <Td>{nama}</Td>
+                  <Td num>{jml}</Td>
+                  <Td><BilahDalamBaris persen={cak as number} /></Td>
+                </tr>
+              ))}
+            </tbody>
+          </Tabel>
+        </Panel>
+      </div>
+
+      <div className="mt-4">
+        <Panel judul="Keadaan kosong" padat>
+          <Kosong
+            judul="Rute hari ini belum disusun"
+            keterangan="Sistem akan memilih warung yang sudah jatuh tempo lalu mengurutkannya berdasarkan jarak."
+            aksi={<Tombol>Susun rute hari ini</Tombol>}
+          />
+        </Panel>
+      </div>
+    </main>
   );
 }

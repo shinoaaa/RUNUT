@@ -1,26 +1,132 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   RUNUT — token desain
+   Arah: terang, tenang, padat data.
+   Tanpa mode gelap, tanpa gradien, tanpa glow.
+   Pemisah antar permukaan memakai GARIS TEPI, bukan bayangan.
+   ============================================================ */
+
+@theme {
+  /* -- permukaan & teks -- */
+  --color-canvas: #f6f7f5;
+  --color-surface: #ffffff;
+  --color-line: #e3e6e2;
+  --color-line-strong: #cfd5d0;
+
+  --color-ink: #16211c;
+  --color-ink-2: #5c6b63;
+  --color-ink-3: #8a968f;
+
+  /* -- merek -- */
+  --color-brand: #0e4f3f;
+  --color-brand-hover: #0a3e31;
+  --color-accent: #1f9d6e;
+  --color-accent-soft: #e6f4ee;
+
+  /* -- status -- */
+  --color-ok: #1f9d6e;
+  --color-ok-bg: #e6f4ee;
+  --color-warn: #b77400;
+  --color-warn-bg: #fdf3e0;
+  --color-danger: #b23a2e;
+  --color-danger-bg: #fcedea;
+  --color-mute: #6b7a72;
+  --color-mute-bg: #eff1ef;
+  --color-info: #1d6fa5;
+  --color-info-bg: #e8f1f8;
+
+  /* -- skala bertingkat untuk peta warna wilayah -- */
+  --color-step-1: #edf5f0;
+  --color-step-2: #c9e4d6;
+  --color-step-3: #93cbb2;
+  --color-step-4: #4fa588;
+  --color-step-5: #0e7a5b;
+  /* wilayah tanpa data — sengaja abu, bukan hijau termuda */
+  --color-step-none: #e8eae7;
+
+  /* -- penanda titik di peta -- */
+  --color-pin-rutin: #1f9d6e;
+  --color-pin-jarang: #e0a030;
+  --color-pin-risiko: #b23a2e;
+  --color-pin-baru: #9aa5a0;
+
+  /* -- geometri -- */
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --radius-input: 8px;
+  --radius-pill: 999px;
+
+  /* satu-satunya bayangan di seluruh sistem, khusus popover & modal */
+  --shadow-pop: 0 4px 16px rgb(16 33 28 / 0.08);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ============================================================
+   Dasar
+   ============================================================ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* angka pada tabel dan kartu harus sejajar ke bawah */
+.tabular,
+th[data-num],
+td[data-num] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* fokus keyboard yang terlihat, dipakai seluruh komponen */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Leaflet: peta dasar dibuat kelabu supaya satu-satunya warna
+   di layar datang dari data, bukan dari peta */
+.peta-kelabu .leaflet-tile-pane {
+  filter: grayscale(1) brightness(1.06) contrast(0.92);
+}
+
+.leaflet-container {
+  background: var(--color-canvas);
+  font: inherit;
+}
+
+/* tabel lebar tidak boleh menggeser badan halaman */
+.gulir-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* layar petugas: lebar penuh di HP, kolom terpusat di layar lebar */
+.bingkai-lapangan {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .bingkai-lapangan {
+    max-width: 420px;
+    margin-inline: auto;
+    border-inline: 1px solid var(--color-line);
+    min-height: 100dvh;
+    background: var(--color-canvas);
+  }
+}
+
+@media print {
+  .tanpa-cetak {
+    display: none !important;
+  }
 }

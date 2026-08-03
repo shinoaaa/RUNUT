@@ -1,0 +1,395 @@
+// ============================================================
+// RUNUT — skema basis data
+//
+// Empat lapis, bukan dua:
+//   MASTER    -> boleh disunting, dihapus halus saja (aktif: boolean)
+//   REFERENSI -> berversi waktu, yang lama tetap disimpan
+//   TRANSAKSI -> hasil olahan, boleh dihitung ulang
+//   BUKTI     -> HANYA-TAMBAH. Tidak pernah di-update, tidak pernah dihapus
+//
+// Arah turunannya sengaja terbalik dari kebiasaan:
+// baris Penjemputan DITURUNKAN dari KejadianAlat, bukan sebaliknya.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// ENUM
+// ------------------------------------------------------------
+
+enum Peran {
+  PETUGAS
+  OPERATOR
+  PEMDA
+  ADMIN
+}
+
+enum SumberData {
+  OSM
+  IMPOR_DINAS
+  PETUGAS
+}
+
+enum StatusVerifikasi {
+  BELUM
+  DIKUNJUNGI
+  TUTUP_PERMANEN
+  MENOLAK
+}
+
+enum KelasSkala {
+  KECIL
+  SEDANG
+  BESAR
+}
+
+enum JenisKejadian {
+  PICKUP
+  TARE
+  DROPOFF
+  STATUS
+  ATTEST
+}
+
+enum StatusTrip {
+  BERJALAN
+  DISETOR
+  DITINJAU
+}
+
+enum StatusLot {
+  TERBUKA
+  TERTUTUP
+  DISERAHKAN
+}
+
+enum HasilKunjungan {
+  SELESAI
+  TUTUP
+  TIDAK_ADA_ORANG
+  MENOLAK
+}
+
+enum StatusPermintaan {
+  BARU
+  DIJADWALKAN
+  SELESAI
+  BATAL
+}
+
+// ------------------------------------------------------------
+// LAPIS 1 — MASTER
+// ------------------------------------------------------------
+
+model Kecamatan {
+  id          Int      @id @default(autoincrement())
+  nama        String   @unique
+  kodePos     String?
+  jumlahDesa  Int      @default(0)
+  // Geometri TIDAK disimpan di sini. Poligonnya dilayani sebagai
+  // berkas statis di /data/kecamatan.geojson lalu digabungkan
+  // di sisi klien berdasarkan nama.
+  warung      Warung[]
+  titikKumpul TitikKumpul[]
+
+  @@map("kecamatan")
+}
+
+model Warung {
+  id       Int    @id @default(autoincrement())
+  nama     String
+  kategori String // hasil pemetaan dari amenity + cuisine + kata pada nama
+  cuisine  String?
+  alamat   String?
+  desa     String?
+
+  lat Float
+  lon Float
+
+  kecamatanId Int?
+  kecamatan   Kecamatan? @relation(fields: [kecamatanId], references: [id])
+
+  // stiker QR yang ditempel di warung
+  qrToken String @unique
+
+  kelasSkala      KelasSkala @default(KECIL)
+  estimasiLMinggu Float      @default(0)
+
+  // Dua kolom yang membedakan "tidak pernah setor" dari "sudah tutup".
+  sumberData       SumberData       @default(OSM)
+  statusVerifikasi StatusVerifikasi @default(BELUM)
+  aktif            Boolean          @default(true)
+
+  osmType String?
+  osmId   BigInt?
+
+  penjemputan Penjemputan[]
+  permintaan  PermintaanJemput[]
+  kunjungan   Kunjungan[]
+
+  dibuatAt    DateTime @default(now())
+  diperbaruiAt DateTime @updatedAt
+
+  @@index([kecamatanId])
+  @@index([statusVerifikasi])
+  @@map("warung")
+}
+
+model TitikKumpul {
+  id          Int        @id @default(autoincrement())
+  nama        String
+  lat         Float
+  lon         Float
+  kecamatanId Int?
+  kecamatan   Kecamatan? @relation(fields: [kecamatanId], references: [id])
+  aktif       Boolean    @default(true)
+
+  trip Trip[]
+  lot  Lot[]
+
+  @@map("titik_kumpul")
+}
+
+model Pengguna {
+  id        Int      @id @default(autoincrement())
+  nama      String
+  email     String   @unique
+  sandiHash String
+  peran     Peran
+  aktif     Boolean  @default(true)
+  dibuatAt  DateTime @default(now())
+
+  perangkat   Perangkat[]
+  penjemputan Penjemputan[]
+  trip        Trip[]
+  kunjungan   Kunjungan[]
+
+  @@map("pengguna")
+}
+
+model Perangkat {
+  id       Int    @id @default(autoincrement())
+  deviceId String @unique
+
+  // kunci publik Ed25519 milik alat, dalam base64
+  publicKey String
+
+  petugasId Int?
+  petugas   Pengguna? @relation(fields: [petugasId], references: [id])
+
+  calibRefG Int      @default(0)
+  lastSeen  DateTime?
+  batteryMv Int?
+  rssiDbm   Int?
+
+  // ujung rantai bukti milik alat ini
+  lastHash String?
+  lastSeq  Int     @default(0)
+
+  aktif    Boolean  @default(true)
+  dibuatAt DateTime @default(now())
+
+  kejadian    KejadianAlat[]
+  penjemputan Penjemputan[]
+
+  @@map("perangkat")
+}
+
+// ------------------------------------------------------------
+// LAPIS 2 — REFERENSI (berversi waktu)
+// ------------------------------------------------------------
+
+model FaktorKategori {
+  kategori         String   @id
+  intensitasLMinggu Float
+  nSampel          Int      @default(0)
+  diperbaruiAt     DateTime @updatedAt
+
+  @@map("faktor_kategori")
+}
+
+model Harga {
+  id          Int      @id @default(autoincrement())
+  berlakuDari DateTime
+  rpPerKg     Int
+
+  @@index([berlakuDari])
+  @@map("harga")
+}
+
+// ------------------------------------------------------------
+// LAPIS 3 — BUKTI (hanya-tambah)
+// ------------------------------------------------------------
+
+model KejadianAlat {
+  id Int @id @default(autoincrement())
+
+  perangkatId Int
+  perangkat   Perangkat @relation(fields: [perangkatId], references: [id])
+
+  seq     Int
+  eventId String        @unique
+  type    JenisKejadian
+
+  // waktu menurut ALAT, dan waktu tiba di server — disimpan terpisah
+  recordedAt DateTime
+  receivedAt DateTime @default(now())
+
+  payload Json
+
+  prevHash String?
+  hash     String
+  sig      String
+
+  terverifikasi Boolean @default(false)
+  catatan       String?
+
+  penjemputan Penjemputan?
+  tripDropoff Trip?        @relation("DropoffTrip")
+
+  @@unique([perangkatId, seq])
+  @@index([type])
+  @@index([receivedAt])
+  @@map("kejadian_alat")
+}
+
+// ------------------------------------------------------------
+// LAPIS 4 — TRANSAKSI (diturunkan dari lapis bukti)
+// ------------------------------------------------------------
+
+model Trip {
+  id        Int      @id @default(autoincrement())
+  petugasId Int
+  petugas   Pengguna @relation(fields: [petugasId], references: [id])
+
+  tanggal DateTime
+  status  StatusTrip @default(BERJALAN)
+
+  titikKumpulId Int?
+  titikKumpul   TitikKumpul? @relation(fields: [titikKumpulId], references: [id])
+
+  totalGWarung      Int  @default(0)
+  totalGTitikKumpul Int?
+  susutG            Int?
+  susutPersen       Float?
+
+  dropoffEventId Int?          @unique
+  dropoffEvent   KejadianAlat? @relation("DropoffTrip", fields: [dropoffEventId], references: [id])
+
+  penjemputan Penjemputan[]
+  lotTrip     LotTrip[]
+  kunjungan   Kunjungan[]
+
+  dibuatAt DateTime @default(now())
+
+  @@index([petugasId, tanggal])
+  @@map("trip")
+}
+
+model Penjemputan {
+  id Int @id @default(autoincrement())
+
+  warungId Int
+  warung   Warung @relation(fields: [warungId], references: [id])
+
+  petugasId Int
+  petugas   Pengguna @relation(fields: [petugasId], references: [id])
+
+  perangkatId Int?
+  perangkat   Perangkat? @relation(fields: [perangkatId], references: [id])
+
+  kejadianAlatId Int          @unique
+  kejadianAlat   KejadianAlat @relation(fields: [kejadianAlatId], references: [id])
+
+  tripId Int?
+  trip   Trip? @relation(fields: [tripId], references: [id])
+
+  beratBersihG Int
+  lat          Float
+  lon          Float
+  gpsAkurasiM  Float?
+  jarakDariWarungM Float?
+
+  gpsOk        Boolean @default(false)
+  qrOk         Boolean @default(false)
+  konfirmasiOk Boolean @default(false)
+
+  // harga yang berlaku SAAT ITU, bukan sambungan ke harga terkini
+  hargaPerKg Int
+  nilaiRp    Int
+
+  dibuatAt DateTime @default(now())
+
+  @@index([warungId])
+  @@index([tripId])
+  @@index([dibuatAt])
+  @@map("penjemputan")
+}
+
+/// Catatan kunjungan yang TIDAK menghasilkan penjemputan.
+/// "Menolak" adalah data yang berharga, jadi alasannya disimpan.
+model Kunjungan {
+  id       Int            @id @default(autoincrement())
+  warungId Int
+  warung   Warung         @relation(fields: [warungId], references: [id])
+  tripId   Int?
+  trip     Trip?          @relation(fields: [tripId], references: [id])
+  petugasId Int
+  petugas  Pengguna       @relation(fields: [petugasId], references: [id])
+  hasil    HasilKunjungan
+  catatan  String?
+  dibuatAt DateTime       @default(now())
+
+  @@index([warungId])
+  @@map("kunjungan")
+}
+
+model Lot {
+  id            Int         @id @default(autoincrement())
+  kode          String      @unique
+  titikKumpulId Int
+  titikKumpul   TitikKumpul @relation(fields: [titikKumpulId], references: [id])
+
+  beratG Int       @default(0)
+  status StatusLot @default(TERBUKA)
+
+  qrToken String @unique
+
+  offtaker     String?
+  hargaJual    Int?
+  dibuatAt     DateTime  @default(now())
+  ditutupAt    DateTime?
+  diserahkanAt DateTime?
+
+  trip LotTrip[]
+
+  @@map("lot")
+}
+
+model LotTrip {
+  lotId  Int
+  lot    Lot  @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  tripId Int
+  trip   Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@id([lotId, tripId])
+  @@map("lot_trip")
+}
+
+model PermintaanJemput {
+  id       Int              @id @default(autoincrement())
+  warungId Int
+  warung   Warung           @relation(fields: [warungId], references: [id])
+  status   StatusPermintaan @default(BARU)
+  dibuatAt DateTime         @default(now())
+
+  @@index([status])
+  @@map("permintaan_jemput")
+}

@@ -1,0 +1,117 @@
+[
+ {
+  "kecamatan": "Cikarang Pusat",
+  "jumlah_desa": 6,
+  "warung_terdata": 79
+ },
+ {
+  "kecamatan": "Cikarang Selatan",
+  "jumlah_desa": 7,
+  "warung_terdata": 40
+ },
+ {
+  "kecamatan": "Tambun Selatan",
+  "jumlah_desa": 10,
+  "warung_terdata": 35
+ },
+ {
+  "kecamatan": "Babelan",
+  "jumlah_desa": 9,
+  "warung_terdata": 14
+ },
+ {
+  "kecamatan": "Tambun Utara",
+  "jumlah_desa": 8,
+  "warung_terdata": 14
+ },
+ {
+  "kecamatan": "Cikarang Barat",
+  "jumlah_desa": 11,
+  "warung_terdata": 4
+ },
+ {
+  "kecamatan": "Cibitung",
+  "jumlah_desa": 7,
+  "warung_terdata": 3
+ },
+ {
+  "kecamatan": "Cikarang Utara",
+  "jumlah_desa": 11,
+  "warung_terdata": 2
+ },
+ {
+  "kecamatan": "Karang Bahagia",
+  "jumlah_desa": 8,
+  "warung_terdata": 2
+ },
+ {
+  "kecamatan": "Sukatani",
+  "jumlah_desa": 7,
+  "warung_terdata": 1
+ },
+ {
+  "kecamatan": "Bojongmangu",
+  "jumlah_desa": 6,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Cabangbungin",
+  "jumlah_desa": 8,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Cibarusah",
+  "jumlah_desa": 7,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Cikarang Timur",
+  "jumlah_desa": 8,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Kedung Waringin",
+  "jumlah_desa": 7,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Muaragembong",
+  "jumlah_desa": 6,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Pebayuran",
+  "jumlah_desa": 13,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Serang Baru",
+  "jumlah_desa": 8,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Setu",
+  "jumlah_desa": 11,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Sukakarya",
+  "jumlah_desa": 7,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Sukawangi",
+  "jumlah_desa": 7,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Tambelang",
+  "jumlah_desa": 7,
+  "warung_terdata": 0
+ },
+ {
+  "kecamatan": "Tarumajaya",
+  "jumlah_desa": 8,
+  "warung_terdata": 0
+ }
+]
