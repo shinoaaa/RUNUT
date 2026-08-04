@@ -19,6 +19,14 @@ export function Sidebar({
   const [buka, setBuka] = useState(false);
   const menu = MENU_PERAN[pengguna.peran] ?? [];
 
+  // Yang menyala hanya SATU: tautan dengan kecocokan terpanjang.
+  // Tanpa ini, membuka /dashboard/warung membuat "Dashboard" ikut
+  // menyala karena alamatnya memang diawali "/dashboard/".
+  const terpilih = menu
+    .flatMap((k) => k.isi.map((m) => m.href))
+    .filter((h) => path === h || path.startsWith(h + "/"))
+    .sort((a, b) => b.length - a.length)[0];
+
   const isi = (
     <nav className="flex h-full flex-col gap-6 px-3 py-5">
       <Link href={menu[0]?.isi[0]?.href ?? "/dashboard"} className="flex items-center gap-2.5 px-2">
@@ -40,7 +48,7 @@ export function Sidebar({
             </p>
             <ul className="flex flex-col gap-0.5">
               {k.isi.map((m) => {
-                const aktif = path === m.href || path.startsWith(m.href + "/");
+                const aktif = m.href === terpilih;
                 return (
                   <li key={m.href}>
                     <Link
