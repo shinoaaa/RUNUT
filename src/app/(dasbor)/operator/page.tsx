@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   KartuAngka,
   Kosong,
@@ -11,10 +10,10 @@ import {
   Tombol,
 } from "@/components/ui";
 import { db } from "@/lib/db";
-import { sesiSekarang } from "@/lib/sesi";
 import { ASUMSI } from "@/lib/statistik";
 import { angka, tanggal } from "@/lib/format";
 import { buatLot } from "@/app/operator/aksi";
+import { pastikanAkses } from "@/lib/sesi";
 
 export const metadata = { title: "Titik Kumpul" };
 export const dynamic = "force-dynamic";
@@ -26,9 +25,7 @@ const NADA_LOT = {
 } as const;
 
 export default async function HalamanOperator() {
-  const sesi = await sesiSekarang();
-  if (!sesi) redirect("/masuk");
-
+  await pastikanAkses("/operator");
   const [trip, lot, titikKumpul] = await Promise.all([
     db.trip.findMany({
       where: { status: "DISETOR" },

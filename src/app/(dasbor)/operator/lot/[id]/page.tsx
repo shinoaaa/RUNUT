@@ -1,13 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { KartuAngka, Panel, Pil, Tabel, Td, Th, Tombol } from "@/components/ui";
 import { db } from "@/lib/db";
-import { sesiSekarang } from "@/lib/sesi";
 import { ASUMSI } from "@/lib/statistik";
 import { angka, rupiah, tanggal } from "@/lib/format";
 import { serahkanLot, tutupLot, ubahIsiLot } from "@/app/operator/aksi";
+import { pastikanAkses } from "@/lib/sesi";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +16,7 @@ export default async function HalamanLot({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const sesi = await sesiSekarang();
-  if (!sesi) redirect("/masuk");
-
+  await pastikanAkses("/operator");
   const { id } = await params;
   const lotId = Number(id);
 

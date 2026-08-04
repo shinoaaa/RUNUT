@@ -8,7 +8,9 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { bolehAkses } from "@/lib/menu";
 
 export type Peran = "PETUGAS" | "OPERATOR" | "PEMDA" | "ADMIN";
 
@@ -80,4 +82,16 @@ export const BERANDA_PERAN: Record<Peran, string> = {
 
 export async function penggunaDemo(peran: Peran) {
   return db.pengguna.findFirst({ where: { peran, aktif: true } });
+}
+
+/**
+ * Penjaga halaman. Menyembunyikan menu saja tidak cukup — alamatnya
+ * masih bisa diketik langsung. Peran yang tidak berhak dikembalikan ke
+ * halaman awalnya sendiri, bukan diberi halaman galat.
+ */
+export async function pastikanAkses(path: string): Promise<Sesi> {
+  const s = await sesiSekarang();
+  if (!s) redirect("/masuk");
+  if (!bolehAkses(s.peran, path)) redirect(BERANDA_PERAN[s.peran]);
+  return s;
 }

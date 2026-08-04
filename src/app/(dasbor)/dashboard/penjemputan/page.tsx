@@ -1,11 +1,13 @@
 import { KartuAngka, Kosong, Panel, Pil, Tabel, Td, Th } from "@/components/ui";
 import { db } from "@/lib/db";
 import { angka, rupiah, tanggalJam } from "@/lib/format";
+import { pastikanAkses } from "@/lib/sesi";
 
 export const metadata = { title: "Penjemputan" };
 export const dynamic = "force-dynamic";
 
 export default async function HalamanPenjemputan() {
+  await pastikanAkses("/dashboard/penjemputan");
   const [daftar, ringkas, tanpaGps, tanpaKonfirmasi] = await Promise.all([
     db.penjemputan.findMany({
       orderBy: { dibuatAt: "desc" },

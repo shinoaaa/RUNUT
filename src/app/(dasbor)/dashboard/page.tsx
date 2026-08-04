@@ -1,11 +1,13 @@
 import { Dasbor } from "@/components/Dasbor";
 import { ASUMSI, KG_CO2_PER_LITER_JELANTAH, statistikDasbor } from "@/lib/statistik";
 import { angka } from "@/lib/format";
+import { pastikanAkses } from "@/lib/sesi";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
 export default async function HalamanDasbor() {
+  await pastikanAkses("/dashboard");
   const s = await statistikDasbor();
 
   const asumsi = [

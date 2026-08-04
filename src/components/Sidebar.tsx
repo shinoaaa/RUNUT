@@ -5,46 +5,23 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/components/ui";
-
-const MENU = [
-  {
-    kelompok: "Pantau",
-    isi: [
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/dashboard/warung", label: "Registri Warung" },
-      { href: "/dashboard/penjemputan", label: "Penjemputan" },
-    ],
-  },
-  {
-    kelompok: "Kelola",
-    isi: [
-      { href: "/operator", label: "Lot & Penyerahan" },
-      { href: "/dashboard/perangkat", label: "Perangkat" },
-    ],
-  },
-  {
-    kelompok: "Alat bantu",
-    isi: [
-      { href: "/dashboard/skenario", label: "Kalkulator Skenario" },
-      { href: "/petugas", label: "Alur Petugas" },
-      { href: "/simulator", label: "Simulator Timbangan" },
-    ],
-  },
-];
+import { KETERANGAN_PERAN, MENU_PERAN } from "@/lib/menu";
+import type { Peran } from "@/lib/sesi";
 
 export function Sidebar({
   pengguna,
   keluar,
 }: {
-  pengguna: { nama: string; peran: string };
+  pengguna: { nama: string; peran: Peran };
   keluar: () => Promise<void>;
 }) {
   const path = usePathname();
   const [buka, setBuka] = useState(false);
+  const menu = MENU_PERAN[pengguna.peran] ?? [];
 
   const isi = (
     <nav className="flex h-full flex-col gap-6 px-3 py-5">
-      <Link href="/dashboard" className="flex items-center gap-2.5 px-2">
+      <Link href={menu[0]?.isi[0]?.href ?? "/dashboard"} className="flex items-center gap-2.5 px-2">
         <Image
           src="/brand/logomark.svg"
           alt=""
@@ -56,7 +33,7 @@ export function Sidebar({
       </Link>
 
       <div className="flex flex-1 flex-col gap-5">
-        {MENU.map((k) => (
+        {menu.map((k) => (
           <div key={k.kelompok}>
             <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
               {k.kelompok}
@@ -88,8 +65,8 @@ export function Sidebar({
 
       <div className="border-t border-white/12 px-2 pt-3">
         <p className="truncate text-sm text-white/85">{pengguna.nama}</p>
-        <p className="text-[11px] capitalize text-white/45">
-          {pengguna.peran.toLowerCase()} · Kabupaten Bekasi
+        <p className="text-[11px] text-white/45">
+          {KETERANGAN_PERAN[pengguna.peran]}
         </p>
         <form action={keluar}>
           <button
