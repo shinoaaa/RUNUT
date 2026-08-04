@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { statistikDasbor } from "@/lib/statistik";
 import { angka } from "@/lib/format";
 
@@ -29,14 +29,16 @@ const LANGKAH = [
 ];
 
 export default async function Beranda() {
-  const [s, lot] = await Promise.all([
-    statistikDasbor(),
+  // Dijalankan berurutan, bukan serentak: paket gratis Neon punya batas
+  // sambungan yang mudah terlampaui kalau semua kueri dibuka sekaligus.
+  const s = await statistikDasbor();
+  const lot = await coba(() =>
     db.lot.findFirst({
       where: { status: { not: "TERBUKA" } },
       orderBy: { id: "desc" },
       select: { qrToken: true, kode: true },
     }),
-  ]);
+  );
 
   return (
     <main>

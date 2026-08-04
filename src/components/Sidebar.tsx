@@ -26,6 +26,7 @@ const MENU = [
     kelompok: "Alat bantu",
     isi: [
       { href: "/dashboard/skenario", label: "Kalkulator Skenario" },
+      { href: "/petugas", label: "Alur Petugas" },
       { href: "/simulator", label: "Simulator Timbangan" },
     ],
   },

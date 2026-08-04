@@ -1,19 +1,21 @@
 import { Skenario } from "@/components/Skenario";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { ASUMSI, KG_CO2_PER_LITER_JELANTAH, statistikDasbor } from "@/lib/statistik";
 
 export const metadata = { title: "Kalkulator Skenario" };
 export const dynamic = "force-dynamic";
 
 export default async function HalamanSkenario() {
-  const [s, petugas, harga] = await Promise.all([
-    statistikDasbor(),
+  const s = await statistikDasbor();
+  const petugas = await coba(() =>
     db.pengguna.count({ where: { peran: "PETUGAS", aktif: true } }),
+  );
+  const harga = await coba(() =>
     db.harga.findFirst({
       where: { berlakuDari: { lte: new Date() } },
       orderBy: { berlakuDari: "desc" },
     }),
-  ]);
+  );
 
   return (
     <Skenario

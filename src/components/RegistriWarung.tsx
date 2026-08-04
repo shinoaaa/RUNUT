@@ -10,7 +10,6 @@ import {
   Tabel,
   Td,
   Th,
-  Tombol,
   cn,
 } from "@/components/ui";
 import { LABEL_STATUS, StatusWarung, angka } from "@/lib/format";
@@ -75,10 +74,6 @@ export function RegistriWarung({
             {angka(data.filter((w) => w.terjemputLBulan > 0).length)} aktif ·{" "}
             {angka(jumlahBerisiko)} berisiko
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Tombol nada="kedua">Impor CSV</Tombol>
-          <Tombol>Tambah warung</Tombol>
         </div>
       </header>
 

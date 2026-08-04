@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { KG_PER_LITER } from "@/lib/format";
 
 /* ============================================================
@@ -72,7 +72,7 @@ export async function statistikDasbor(): Promise<StatistikDasbor> {
   const delapanMingguLalu = new Date(sekarang - 56 * 86_400_000);
 
   const [warung, penjemputanBulanIni, nilaiTahunIni, tripDisetor, penjemputanTren] =
-    await Promise.all([
+    await coba(() => Promise.all([
       db.warung.findMany({
         where: { aktif: true },
         select: {
@@ -98,7 +98,7 @@ export async function statistikDasbor(): Promise<StatistikDasbor> {
         where: { dibuatAt: { gte: delapanMingguLalu } },
         select: { dibuatAt: true, beratBersihG: true },
       }),
-    ]);
+    ]));
 
   const terjemputPerWarung = new Map(
     penjemputanBulanIni.map((p) => [p.warungId, p._sum.beratBersihG ?? 0]),
@@ -134,7 +134,7 @@ export async function statistikDasbor(): Promise<StatistikDasbor> {
     perKec.set(nama, r);
   }
 
-  const semuaKec = await db.kecamatan.findMany({ select: { nama: true } });
+  const semuaKec = await coba(() => db.kecamatan.findMany({ select: { nama: true } }));
   for (const k of semuaKec)
     if (!perKec.has(k.nama))
       perKec.set(k.nama, {
