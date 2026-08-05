@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Kosong, Pil, Tombol, cn } from "@/components/ui";
-import { angka } from "@/lib/format";
+import { Kosong, Pil, TautanTombol, Tombol, cn } from "@/components/ui";
+import { angka, kg, liter } from "@/lib/format";
 
 export interface RingkasTrip {
   id: number;
@@ -43,9 +43,7 @@ export function Setor({
             judul="Belum ada muatan hari ini"
             keterangan="Lakukan penjemputan terlebih dahulu, lalu kembali ke halaman ini untuk menyetor."
             aksi={
-              <Link href="/petugas">
-                <Tombol>Kembali ke rute</Tombol>
-              </Link>
+              <TautanTombol href="/petugas">Kembali ke rute</TautanTombol>
             }
           />
         </div>
@@ -93,12 +91,13 @@ export function Setor({
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-ink-2">Muatan hari ini</span>
             <span className="tabular text-[26px] font-bold">
-              {angka(trip.totalGWarung / 1000, 2)}{" "}
-              <span className="text-base font-medium text-ink-2">kg</span>
+              {liter(trip.totalGWarung)}{" "}
+              <span className="text-base font-medium text-ink-2">liter</span>
             </span>
           </div>
           <p className="mt-1 text-[13px] text-ink-3">
-            Dari {trip.jumlahWarung} warung, dijumlahkan dari timbangan di tiap lokasi
+            {kg(trip.totalGWarung)} kg dari {trip.jumlahWarung} warung, dijumlahkan dari
+            timbangan di tiap lokasi
           </p>
         </section>
 
@@ -109,7 +108,7 @@ export function Setor({
               <span className="min-w-0 flex-1 truncate text-sm">{d.nama}</span>
               <span className="text-[12px] text-ink-3">{d.jam}</span>
               <span className="tabular w-20 text-right text-sm font-medium">
-                {angka(d.beratBersihG / 1000, 2)} kg
+                {liter(d.beratBersihG)} L
               </span>
             </li>
           ))}
@@ -125,7 +124,7 @@ export function Setor({
             ].map(([l, v]) => (
               <div key={l as string} className="flex justify-between py-1 text-sm">
                 <span className="text-ink-2">{l}</span>
-                <span className="tabular">{angka((v as number) / 1000, 2)} kg</span>
+                <span className="tabular">{liter(v as number)} L</span>
               </div>
             ))}
             <div className="my-2 border-t border-line" />
@@ -139,7 +138,7 @@ export function Setor({
                   wajar ? "text-ink" : "text-danger",
                 )}
               >
-                {angka(hasil.susutG / 1000, 3)} kg
+                {liter(hasil.susutG)} L
                 <span className="ml-1 text-sm font-medium">
                   ({angka(hasil.susutPersen, 2)}%)
                 </span>

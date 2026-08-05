@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   BilahDalamBaris,
@@ -9,9 +8,9 @@ import {
   Panel,
   Pil,
   Tabel,
+  TautanTombol,
   Td,
   Th,
-  Tombol,
   cn,
 } from "@/components/ui";
 import { LABEL_STATUS, StatusWarung, angka } from "@/lib/format";
@@ -81,9 +80,7 @@ export function RegistriWarung({
           </p>
         </div>
         {bolehTambah && (
-          <Link href="/dashboard/warung/tambah">
-            <Tombol>Tambah warung</Tombol>
-          </Link>
+          <TautanTombol href="/dashboard/warung/tambah">Tambah warung</TautanTombol>
         )}
       </header>
 

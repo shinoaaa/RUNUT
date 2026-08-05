@@ -14,6 +14,20 @@ export function rupiah(n: number, ringkas = false) {
   return `Rp ${angka(n)}`;
 }
 
+/* ------------------------------------------------------------
+   Satuan
+
+   LITER adalah satuan yang ditampilkan kepada pengguna di seluruh
+   aplikasi — estimasi, potensi, kebocoran, stok, dan hasil jemput.
+   Alasannya, seluruh pihak di lapangan berbicara dalam liter: jeriken
+   berukuran liter, harga pengepul per liter, dan insentif program pun
+   per liter.
+
+   KILOGRAM tetap ditampilkan berdampingan pada layar yang memang
+   menimbang, sebab itulah yang benar-benar diukur alat. Yang tersimpan
+   di basis data selalu gram, dan liter adalah turunannya.
+   ------------------------------------------------------------ */
+
 /** gram -> kilogram */
 export const kg = (gram: number, desimal = 2) => angka(gram / 1000, desimal);
 
@@ -21,6 +35,9 @@ export const kg = (gram: number, desimal = 2) => angka(gram / 1000, desimal);
 export const KG_PER_LITER = 0.91;
 export const liter = (gram: number, desimal = 1) =>
   angka(gram / 1000 / KG_PER_LITER, desimal);
+
+/** Liter di depan, kilogram terukur di belakang. */
+export const literKg = (gram: number) => `${liter(gram)} L · ${kg(gram)} kg`;
 
 export const persen = (n: number, desimal = 1) => `${angka(n, desimal)}%`;
 

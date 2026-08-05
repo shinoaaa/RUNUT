@@ -1,9 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
-import { Panel, TagKeyakinan, Tombol, cn } from "@/components/ui";
+import { Panel, TagKeyakinan, TautanTombol, Tombol, cn } from "@/components/ui";
 import { KATEGORI, SKALA, hitungEstimasi, type KelasSkala } from "@/lib/estimasi";
 import { angka } from "@/lib/format";
 import type { HasilTambah } from "@/app/(dasbor)/dashboard/warung/tambah/aksi";
@@ -199,11 +198,9 @@ export function FormWarung({
           <Tombol besar type="submit" disabled={menunggu} className="flex-1">
             {menunggu ? "Menyimpan…" : "Simpan warung"}
           </Tombol>
-          <Link href="/dashboard/warung">
-            <Tombol besar nada="kedua" type="button">
-              Batal
-            </Tombol>
-          </Link>
+          <TautanTombol href="/dashboard/warung" besar nada="kedua">
+            Batal
+          </TautanTombol>
         </div>
       </div>
     </form>

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui";
 import { coba, db } from "@/lib/db";
 import { ASUMSI } from "@/lib/statistik";
-import { angka, tanggal } from "@/lib/format";
+import { angka, liter, tanggal } from "@/lib/format";
 import { buatLot } from "@/app/operator/aksi";
 import { pastikanAkses } from "@/lib/sesi";
 
@@ -91,8 +91,8 @@ export default async function HalamanOperator() {
       <div className="grid gap-4 sm:grid-cols-3">
         <KartuAngka
           label="Stok Belum Masuk Lot"
-          angka={angka(stokG / 1000, 1)}
-          satuan="kg"
+          angka={liter(stokG, 0)}
+          satuan="L"
           catatan={`dari ${belumMasukLot.length} setoran`}
         />
         <KartuAngka
@@ -137,7 +137,7 @@ export default async function HalamanOperator() {
                       <Td>{tanggal(t.tanggal)}</Td>
                       <Td num>{t._count.penjemputan}</Td>
                       <Td num>
-                        {angka((t.totalGTitikKumpul ?? t.totalGWarung) / 1000, 2)} kg
+                        {liter(t.totalGTitikKumpul ?? t.totalGWarung)} L
                       </Td>
                       <Td num>
                         <span className={anomali ? "font-medium text-danger" : undefined}>
@@ -185,7 +185,7 @@ export default async function HalamanOperator() {
                       </span>
                     </span>
                     <span className="tabular text-sm font-medium">
-                      {angka(l.beratG / 1000, 1)} kg
+                      {liter(l.beratG, 0)} L
                     </span>
                     <Pil nada={NADA_LOT[l.status]}>{l.status.toLowerCase()}</Pil>
                   </Link>

@@ -55,6 +55,21 @@ const gayaTombol: Record<NadaTombol, string> = {
   teks: "bg-transparent text-accent underline underline-offset-4 border-0 px-0 hover:text-brand",
 };
 
+/** Kelas bersama, supaya tombol dan tautan-bergaya-tombol tidak pernah berbeda rupa. */
+export function kelasTombol(
+  nada: NadaTombol = "utama",
+  besar = false,
+  className?: string,
+) {
+  return cn(
+    "inline-flex items-center justify-center gap-2 rounded-btn font-medium",
+    "transition-colors disabled:opacity-45 disabled:pointer-events-none",
+    nada !== "teks" && (besar ? "h-12 px-5 text-[15px]" : "h-9 px-3.5 text-sm"),
+    gayaTombol[nada],
+    className,
+  );
+}
+
 export function Tombol({
   nada = "utama",
   besar = false,
@@ -64,17 +79,34 @@ export function Tombol({
   nada?: NadaTombol;
   besar?: boolean;
 }) {
+  return <button {...p} className={kelasTombol(nada, besar, className)} />;
+}
+
+/**
+ * Tautan yang berpenampilan tombol.
+ *
+ * Dipakai menggantikan pola `<Link><Tombol/></Link>`. Pola itu menaruh
+ * <button> di dalam <a> — susunan yang tidak sah — dan pada tombol yang
+ * dinonaktifkan justru berbahaya: `disabled` membuat tombolnya mengabaikan
+ * klik, lalu kliknya jatuh ke tautan induknya sehingga halaman tetap
+ * berpindah. Tombolnya tampak mati padahal tetap bekerja.
+ */
+export function TautanTombol({
+  href,
+  nada = "utama",
+  besar = false,
+  className,
+  children,
+  ...p
+}: Omit<React.ComponentProps<typeof Link>, "className"> & {
+  nada?: NadaTombol;
+  besar?: boolean;
+  className?: string;
+}) {
   return (
-    <button
-      {...p}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-btn font-medium",
-        "transition-colors disabled:opacity-45 disabled:pointer-events-none",
-        nada !== "teks" && (besar ? "h-12 px-5 text-[15px]" : "h-9 px-3.5 text-sm"),
-        gayaTombol[nada],
-        className,
-      )}
-    />
+    <Link {...p} href={href} className={kelasTombol(nada, besar, className)}>
+      {children}
+    </Link>
   );
 }
 
@@ -174,7 +206,10 @@ export function Panel({
   return (
     <section
       className={cn(
-        "rounded-card border border-line bg-surface",
+        // `min-w-0` supaya panel ini sanggup menyusut ketika jadi butir
+        // grid atau flex. Tanpa itu, tabel lebar di dalamnya memaksa
+        // seluruh halaman melebar alih-alih menggulir di dalam wadahnya.
+        "min-w-0 rounded-card border border-line bg-surface",
         className,
       )}
     >

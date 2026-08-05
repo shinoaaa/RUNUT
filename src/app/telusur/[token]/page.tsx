@@ -123,11 +123,11 @@ export default async function HalamanTelusur({
             {lot.kode}
           </h1>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[19px] font-semibold">
-            <span className="tabular">{angka(lot.beratG / 1000, 1)} kg</span>
-            <span className="hidden text-line sm:inline">|</span>
             <span className="tabular">
-              ≈ {angka(lot.beratG / 1000 / ASUMSI.kg_per_liter, 0)} liter
+              {angka(lot.beratG / 1000 / ASUMSI.kg_per_liter, 0)} liter
             </span>
+            <span className="hidden text-line sm:inline">|</span>
+            <span className="tabular">{angka(lot.beratG / 1000, 1)} kg terukur</span>
             <span className="hidden text-line sm:inline">|</span>
             <span className="tabular">
               ≈ {angka(lot.beratG / 1000 / ASUMSI.kg_per_liter / ASUMSI.liter_jelantah_per_biodiesel, 0)}{" "}
@@ -147,7 +147,7 @@ export default async function HalamanTelusur({
           {[
             ["Warung penyumbang", angka(penjemputan.length)],
             ["Petugas", angka(petugas.length)],
-            ["Susut rantai", `${angka(susutG / 1000, 2)} kg`],
+            ["Susut rantai", `${angka(susutG / 1000 / ASUMSI.kg_per_liter, 1)} L`],
             [
               "Diserahkan ke",
               lot.offtaker ?? (lot.status === "DISERAHKAN" ? "—" : "belum diserahkan"),
@@ -197,7 +197,7 @@ export default async function HalamanTelusur({
               <tr>
                 <Th>Warung</Th>
                 <Th>Desa</Th>
-                <Th num>Bobot</Th>
+                <Th num>Volume</Th>
                 <Th>Tanggal</Th>
                 <Th>Petugas</Th>
               </tr>
@@ -207,7 +207,7 @@ export default async function HalamanTelusur({
                 <tr key={i}>
                   <Td>{p.warung.nama}</Td>
                   <Td>{p.warung.desa ?? "—"}</Td>
-                  <Td num>{angka(p.beratBersihG / 1000, 2)} kg</Td>
+                  <Td num>{angka(p.beratBersihG / 1000 / ASUMSI.kg_per_liter, 1)} L</Td>
                   <Td>{tanggal(p.dibuatAt)}</Td>
                   <Td>{p.petugas}</Td>
                 </tr>
@@ -216,7 +216,7 @@ export default async function HalamanTelusur({
                 <Td className="font-semibold">TOTAL</Td>
                 <Td />
                 <Td num className="font-semibold">
-                  {angka(totalBersihG / 1000, 2)} kg
+                  {angka(totalBersihG / 1000 / ASUMSI.kg_per_liter, 1)} L
                 </Td>
                 <Td />
                 <Td />

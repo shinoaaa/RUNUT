@@ -220,7 +220,7 @@ export default async function Beranda() {
           <span>
             RUNUT · Sistem penjemputan dan ketertelusuran minyak jelantah UMKM kuliner
           </span>
-          <span className="ml-auto">Purwarupa untuk IT Festival 2026</span>
+          <span className="ml-auto">Kabupaten Bekasi</span>
         </div>
       </footer>
     </main>

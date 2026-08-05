@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Panel, Pil, Tombol, cn } from "@/components/ui";
-import { angka, rupiah } from "@/lib/format";
+import { angka, kg, liter, rupiah } from "@/lib/format";
 
 export interface PilihanAlat {
   deviceId: string;
@@ -77,7 +77,7 @@ export function Simulator({
       : b?.pesan
         ? b.pesan
         : b?.beratBersihG !== undefined
-          ? `${angka(b.beratBersihG / 1000, 2)} kg · ${rupiah(b.nilaiRp ?? 0)} · GPS ${b.gpsOk ? "cocok" : `meleset ${b.jarakM} m`}`
+          ? `${liter(b.beratBersihG)} L · ${rupiah(b.nilaiRp ?? 0)} · GPS ${b.gpsOk ? "cocok" : `meleset ${b.jarakM} m`}`
           : b?.susutG !== undefined
             ? `Susut ${angka(b.susutG)} g (${angka(b.susutPersen ?? 0, 2)}%)`
             : `HTTP ${hasil?.status}`;
@@ -214,8 +214,11 @@ export function Simulator({
               <div className="rounded-card border border-line bg-canvas px-4 py-3 text-center">
                 <p className="text-[11px] uppercase tracking-[0.08em] text-ink-3">Bersih</p>
                 <p className="tabular text-[34px] font-bold leading-none">
-                  {angka(bersih / 1000, 2)}{" "}
-                  <span className="text-base font-medium text-ink-2">kg</span>
+                  {liter(bersih)}{" "}
+                  <span className="text-base font-medium text-ink-2">liter</span>
+                </p>
+                <p className="tabular mt-0.5 text-[12px] text-ink-3">
+                  {kg(bersih)} kg terukur
                 </p>
               </div>
 
@@ -292,7 +295,7 @@ export function Simulator({
               <p className="mt-3 text-[13px] text-ink-2">
                 Trip #{tripBerjalan.id} sedang berjalan, terkumpul{" "}
                 <span className="tabular font-medium">
-                  {angka(tripBerjalan.totalGWarung / 1000, 2)} kg
+                  {liter(tripBerjalan.totalGWarung)} L
                 </span>
                 .{" "}
                 <button

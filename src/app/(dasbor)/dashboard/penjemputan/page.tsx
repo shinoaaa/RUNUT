@@ -1,6 +1,6 @@
 import { KartuAngka, Kosong, Panel, Pil, Tabel, Td, Th } from "@/components/ui";
 import { coba, db } from "@/lib/db";
-import { angka, rupiah, tanggalJam } from "@/lib/format";
+import { angka, liter, rupiah, tanggalJam } from "@/lib/format";
 import { pastikanAkses } from "@/lib/sesi";
 
 export const metadata = { title: "Penjemputan" };
@@ -45,9 +45,10 @@ export default async function HalamanPenjemputan() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KartuAngka label="Total Penjemputan" angka={angka(ringkas._count)} />
         <KartuAngka
-          label="Bobot Terkumpul"
-          angka={angka((ringkas._sum.beratBersihG ?? 0) / 1000, 1)}
-          satuan="kg"
+          label="Volume Terkumpul"
+          angka={liter(ringkas._sum.beratBersihG ?? 0, 0)}
+          satuan="L"
+          catatan={`${angka((ringkas._sum.beratBersihG ?? 0) / 1000, 1)} kg terukur`}
           keyakinan="terukur"
         />
         <KartuAngka
@@ -75,7 +76,7 @@ export default async function HalamanPenjemputan() {
               <tr>
                 <Th>Warung</Th>
                 <Th>Kecamatan</Th>
-                <Th num>Bobot</Th>
+                <Th num>Volume</Th>
                 <Th num>Nilai</Th>
                 <Th>Petugas</Th>
                 <Th>Alat</Th>
@@ -90,7 +91,7 @@ export default async function HalamanPenjemputan() {
                   <tr key={p.id}>
                     <Td>{p.warung.nama}</Td>
                     <Td>{p.warung.kecamatan?.nama ?? <span className="text-ink-3">—</span>}</Td>
-                    <Td num>{angka(p.beratBersihG / 1000, 2)} kg</Td>
+                    <Td num>{liter(p.beratBersihG)} L</Td>
                     <Td num>{rupiah(p.nilaiRp)}</Td>
                     <Td>{p.petugas.nama}</Td>
                     <Td>

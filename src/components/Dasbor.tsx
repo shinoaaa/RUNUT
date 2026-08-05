@@ -23,7 +23,7 @@ import {
   Th,
 } from "@/components/ui";
 import { LegendaWilayah } from "@/components/peta/LegendaWilayah";
-import { angka, rupiah } from "@/lib/format";
+import { angka, liter, rupiah } from "@/lib/format";
 import type { StatistikDasbor } from "@/lib/statistik";
 
 const PetaWilayah = dynamic(
@@ -86,9 +86,9 @@ export function Dasbor({
         />
         <KartuAngka
           label="Terjemput"
-          angka={angka(s.terjemputKg, 1)}
-          satuan="kg"
-          catatan={`≈ ${angka(s.terjemputLiter, 0)} liter`}
+          angka={angka(s.terjemputLiter, 0)}
+          satuan="L"
+          catatan={`${angka(s.terjemputKg, 1)} kg terukur`}
         />
         <KartuAngka
           label="Warung Aktif"
@@ -111,8 +111,8 @@ export function Dasbor({
       <div className="grid gap-4 lg:grid-cols-3">
         <KartuAngka
           label="Susut Rantai"
-          angka={angka(s.susutRantaiG / 1000, 1)}
-          satuan={`kg · ${angka(s.susutRantaiPersen, 2)}%`}
+          angka={liter(s.susutRantaiG, 0)}
+          satuan={`L · ${angka(s.susutRantaiPersen, 2)}%`}
           catatan="selisih timbang warung terhadap titik kumpul"
           keyakinan="terukur"
         />

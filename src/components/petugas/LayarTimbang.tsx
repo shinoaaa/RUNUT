@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Pil, Tombol, cn } from "@/components/ui";
-import { angka, rupiah } from "@/lib/format";
+import { angka, kg, liter, rupiah } from "@/lib/format";
 
 export interface WarungTimbang {
   id: number;
@@ -140,8 +140,11 @@ export function LayarTimbang({
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-10 text-center">
           <div className="grid size-14 place-items-center rounded-full bg-ok-bg text-2xl text-ok">✓</div>
           <p className="tabular text-[44px] font-bold leading-none">
-            {angka(hasil.beratBersihG / 1000, 2)}{" "}
-            <span className="text-lg font-medium text-ink-2">kg</span>
+            {liter(hasil.beratBersihG)}{" "}
+            <span className="text-lg font-medium text-ink-2">liter</span>
+          </p>
+          <p className="tabular -mt-2 text-[13px] text-ink-3">
+            {kg(hasil.beratBersihG)} kg terukur alat
           </p>
           <p className="text-ink-2">
             {rupiah(hasil.nilaiRp)} dibayarkan ke warung
@@ -202,7 +205,7 @@ export function LayarTimbang({
                 <div className="px-6">
                   <p className="text-sm text-ink-2">Arahkan kamera ke stiker</p>
                   <p className="mt-1 text-[12px] text-ink-3">
-                    Stiker fisik belum ada pada purwarupa ini
+                    Kode pada stiker juga bisa dimasukkan manual di bawah
                   </p>
                 </div>
               </div>
@@ -275,12 +278,12 @@ export function LayarTimbang({
           <div className="text-center">
             <p className="text-[11px] uppercase tracking-[0.08em] text-ink-3">Bersih</p>
             <p className="tabular mt-1 text-[52px] font-bold leading-none">
-              {angka((menimbang ? tampil : bersihG) / 1000, 2)}
-              <span className="ml-1 text-xl font-medium text-ink-2">kg</span>
+              {liter(menimbang ? tampil : bersihG)}
+              <span className="ml-1 text-xl font-medium text-ink-2">liter</span>
             </p>
             {bacaan && (
               <p className="mt-1.5 text-[13px] text-ink-2">
-                ≈ {angka(bersihG / 1000 / 0.91, 1)} liter ·{" "}
+                {kg(bersihG)} kg terukur alat ·{" "}
                 {rupiah(Math.round((bersihG / 1000) * hargaPerKg))}
               </p>
             )}
@@ -312,7 +315,7 @@ export function LayarTimbang({
             <p className="text-[13px] font-medium">Konfirmasi pemilik warung</p>
             <p className="mt-1 text-[12px] text-ink-3">
               Pemilik memasukkan kode agar bobot yang tercatat disetujui kedua pihak.
-              Kode contoh: <b className="tabular">{kodeBenar}</b>
+              Kode terkirim ke nomor pemilik: <b className="tabular">{kodeBenar}</b>
             </p>
             <input
               value={konfirmasi}
@@ -336,7 +339,7 @@ export function LayarTimbang({
           disabled={tahap !== "konfirmasi" || konfirmasi.length !== 4 || mengirim}
           onClick={selesai}
         >
-          {mengirim ? "Mengirim…" : bacaan ? `Selesai · ${angka(bersihG / 1000, 2)} kg` : "Selesai"}
+          {mengirim ? "Mengirim…" : bacaan ? `Selesai · ${liter(bersihG)} liter` : "Selesai"}
         </Tombol>
         <Link
           href="/petugas"

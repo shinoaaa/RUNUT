@@ -112,17 +112,17 @@ export default async function HalamanLot({
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KartuAngka label="Berat Lot" angka={angka(lot.beratG / 1000, 1)} satuan="kg" />
         <KartuAngka
-          label="Setara Liter"
+          label="Isi Lot"
           angka={angka(lot.beratG / 1000 / ASUMSI.kg_per_liter, 0)}
           satuan="L"
+          catatan={`${angka(lot.beratG / 1000, 1)} kg terukur`}
         />
         <KartuAngka label="Warung Penyumbang" angka={angka(jumlahWarung)} />
         <KartuAngka
           label="Susut Rantai"
-          angka={angka(susutG / 1000, 2)}
-          satuan="kg"
+          angka={angka(susutG / 1000 / ASUMSI.kg_per_liter, 1)}
+          satuan="L"
           keyakinan="terukur"
         />
       </div>
@@ -141,7 +141,7 @@ export default async function HalamanLot({
                     <Th>Petugas</Th>
                     <Th>Tanggal</Th>
                     <Th num>Warung</Th>
-                    <Th num>Bobot</Th>
+                    <Th num>Volume</Th>
                     {terbuka && <Th />}
                   </tr>
                 </thead>
@@ -152,7 +152,7 @@ export default async function HalamanLot({
                       <Td>{tanggal(t.tanggal)}</Td>
                       <Td num>{t.penjemputan.length}</Td>
                       <Td num>
-                        {angka((t.totalGTitikKumpul ?? t.totalGWarung) / 1000, 2)} kg
+                        {angka((t.totalGTitikKumpul ?? t.totalGWarung) / 1000 / ASUMSI.kg_per_liter, 1)} L
                       </Td>
                       {terbuka && (
                         <Td>
@@ -188,7 +188,7 @@ export default async function HalamanLot({
                       <Th>Petugas</Th>
                       <Th>Tanggal</Th>
                       <Th num>Warung</Th>
-                      <Th num>Bobot</Th>
+                      <Th num>Volume</Th>
                       <Th num>Susut</Th>
                       <Th />
                     </tr>
@@ -200,7 +200,7 @@ export default async function HalamanLot({
                         <Td>{tanggal(t.tanggal)}</Td>
                         <Td num>{t._count.penjemputan}</Td>
                         <Td num>
-                          {angka((t.totalGTitikKumpul ?? t.totalGWarung) / 1000, 2)} kg
+                          {angka((t.totalGTitikKumpul ?? t.totalGWarung) / 1000 / ASUMSI.kg_per_liter, 1)} L
                         </Td>
                         <Td num>{angka(t.susutPersen ?? 0, 2)}%</Td>
                         <Td>

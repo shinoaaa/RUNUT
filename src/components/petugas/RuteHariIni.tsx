@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Kosong, Pil, Tombol, cn } from "@/components/ui";
-import { angka } from "@/lib/format";
+import { Kosong, Pil, TautanTombol, Tombol, cn } from "@/components/ui";
+import { angka, liter } from "@/lib/format";
 import type { Perhentian, RuteHarian } from "@/lib/rute";
 
 const NADA: Record<Perhentian["urgensi"], "bahaya" | "netral" | "info"> = {
@@ -41,6 +41,7 @@ export function RuteHariIni({
 
   const total = belum.length + selesai.length;
   const persen = total > 0 ? (selesai.length / total) * 100 : 0;
+  const adaMuatan = rute.totalTerkumpulG > 0;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -70,7 +71,7 @@ export function RuteHariIni({
           <span>
             <b className="tabular text-[17px]">{selesai.length}</b> dari {total} warung
           </span>
-          <span className="tabular">{angka(rute.totalTerkumpulG / 1000, 1)} kg terkumpul</span>
+          <span className="tabular">{liter(rute.totalTerkumpulG)} liter terkumpul</span>
         </div>
         <div className="mt-2 h-1 overflow-hidden rounded-pill bg-white/25">
           <div className="h-full rounded-pill bg-white" style={{ width: `${persen}%` }} />
@@ -166,7 +167,7 @@ export function RuteHariIni({
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm text-ink-2">{p.nama}</span>
                   <span className="tabular text-[13px] font-medium">
-                    {angka((p.beratBersihG ?? 0) / 1000, 2)} kg
+                    {liter(p.beratBersihG ?? 0)} L
                   </span>
                 </li>
               ))}
@@ -177,14 +178,20 @@ export function RuteHariIni({
 
       {/* bilah bawah */}
       <div className="sticky bottom-0 border-t border-line bg-surface p-4 sm:rounded-b-card">
-        <Link href="/petugas/setor" className="block">
-          <Tombol besar className="w-full" disabled={rute.totalTerkumpulG === 0}>
-            Setor ke titik kumpul · {angka(rute.totalTerkumpulG / 1000, 1)} kg
+        {adaMuatan ? (
+          <TautanTombol href="/petugas/setor" besar className="w-full">
+            Setor ke titik kumpul · {liter(rute.totalTerkumpulG)} liter
+          </TautanTombol>
+        ) : (
+          <Tombol besar className="w-full" disabled>
+            Belum ada muatan untuk disetor
           </Tombol>
-        </Link>
+        )}
         {rute.titikKumpul && (
           <p className="mt-2 text-center text-[12px] text-ink-3">
-            Tujuan: {rute.titikKumpul.nama}
+            {adaMuatan
+              ? `Tujuan: ${rute.titikKumpul.nama}`
+              : "Timbang di warung dulu, muatannya terkumpul di sini"}
           </p>
         )}
       </div>

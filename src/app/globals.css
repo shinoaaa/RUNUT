@@ -93,6 +93,28 @@ td[data-num] {
   border-radius: 4px;
 }
 
+/* ============================================================
+   Kursor
+   Tailwind v4 tidak lagi memberi kursor penunjuk pada <button>,
+   sehingga tombol terasa seperti teks biasa. Dikembalikan di sini
+   supaya semua yang bisa ditekan memang terlihat bisa ditekan.
+   ============================================================ */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+select,
+input[type="checkbox"],
+input[type="radio"],
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* Leaflet: peta dasar dibuat kelabu supaya satu-satunya warna
    di layar datang dari data, bukan dari peta */
 .peta-kelabu .leaflet-tile-pane {
@@ -104,10 +126,27 @@ td[data-num] {
   font: inherit;
 }
 
-/* tabel lebar tidak boleh menggeser badan halaman */
+/* ============================================================
+   Isi lebar tidak boleh menggeser badan halaman
+
+   Yang boleh menggulir mendatar adalah WADAHNYA, bukan halamannya.
+   `min-width: 0` wajib ada: butir grid dan flex bawaannya memakai
+   `min-width: auto`, sehingga ia menolak menyusut di bawah lebar
+   terkecil isinya — tabel selebar 456px sempat memaksa seluruh
+   halaman jadi 478px di layar 375px.
+   ============================================================ */
 .gulir-x {
   overflow-x: auto;
+  min-width: 0;
+  max-width: 100%;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Jaring pengaman terakhir: badan halaman tidak pernah menggeser
+   mendatar, seberapa pun lebar isinya. */
+html,
+body {
+  overflow-x: clip;
 }
 
 /* layar petugas: lebar penuh di HP, kolom terpusat di layar lebar */
