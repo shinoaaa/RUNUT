@@ -164,8 +164,81 @@ body {
   }
 }
 
+/* ============================================================
+   Lembar stiker QR warung
+
+   Stiker berukuran 45 mm supaya muat empat kolom pada A4 dan tetap
+   terbaca dari jarak sejangkauan tangan. Tiap stiker tidak boleh
+   terpotong pergantian halaman.
+   ============================================================ */
+.lembar-stiker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(45mm, 1fr));
+  gap: 4mm;
+}
+
+.stiker {
+  border: 1px dashed var(--color-line-strong);
+  border-radius: 8px;
+  padding: 4mm 3mm;
+  text-align: center;
+  break-inside: avoid;
+  background: #fff;
+}
+
+.stiker-qr {
+  width: 28mm;
+  height: 28mm;
+  margin: 0 auto;
+  display: block;
+}
+
+.stiker-nama {
+  margin-top: 2.5mm;
+  font-size: 10pt;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-ink);
+}
+
+.stiker-kec {
+  font-size: 8pt;
+  color: var(--color-ink-3);
+}
+
+.stiker-kode {
+  margin-top: 1.5mm;
+  font-family: ui-monospace, "Consolas", monospace;
+  font-size: 12pt;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-brand);
+}
+
+.stiker-jejak {
+  margin-top: 1mm;
+  font-size: 7pt;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-3);
+}
+
 @media print {
   .tanpa-cetak {
     display: none !important;
+  }
+
+  /* Sidebar dan kerangka lain tidak ikut tercetak — yang keluar dari
+     pencetak hanya lembar stikernya. */
+  aside,
+  nav {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .lembar-stiker {
+    gap: 3mm;
   }
 }

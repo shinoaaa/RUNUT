@@ -68,6 +68,19 @@ export function RegistriWarung({
     [data],
   );
 
+  // Lembar stiker mengikuti saringan yang sedang aktif. Penyaring di
+  // halaman ini sekaligus menjadi alat pemilih warung mana yang dicetak,
+  // sehingga tidak perlu kotak centang per baris.
+  const tautanStiker = (() => {
+    const q = new URLSearchParams();
+    if (filterKec) q.set("kec", filterKec);
+    if (cari.trim()) q.set("cari", cari.trim());
+    const st = tab === "berisiko" ? "berisiko" : filterStatus;
+    if (st) q.set("status", st);
+    const s = q.toString();
+    return `/dashboard/warung/stiker${s ? `?${s}` : ""}`;
+  })();
+
   return (
     <div className="px-5 py-6 lg:px-8">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -79,9 +92,14 @@ export function RegistriWarung({
             {angka(jumlahBerisiko)} berisiko
           </p>
         </div>
-        {bolehTambah && (
-          <TautanTombol href="/dashboard/warung/tambah">Tambah warung</TautanTombol>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <TautanTombol href={tautanStiker} nada="kedua">
+            Cetak stiker · {angka(tersaring.length)}
+          </TautanTombol>
+          {bolehTambah && (
+            <TautanTombol href="/dashboard/warung/tambah">Tambah warung</TautanTombol>
+          )}
+        </div>
       </header>
 
       {/* saringan */}
