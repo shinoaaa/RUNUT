@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { hitungHashDariPesan, verifikasiPesan } from "@/lib/bukti";
 
 export const runtime = "nodejs";
@@ -27,15 +27,17 @@ export interface HasilPeriksa {
 }
 
 export async function POST() {
-  const perangkat = await db.perangkat.findMany({
-    select: { id: true, deviceId: true, publicKey: true },
-    orderBy: { deviceId: "asc" },
-  });
+  const perangkat = await coba(() =>
+    db.perangkat.findMany({
+      select: { id: true, deviceId: true, publicKey: true },
+      orderBy: { deviceId: "asc" },
+    }),
+  );
 
   const hasil: HasilPeriksa[] = [];
 
   for (const p of perangkat) {
-    const kejadian = await db.kejadianAlat.findMany({
+    const kejadian = await coba(() => db.kejadianAlat.findMany({
       where: { perangkatId: p.id },
       orderBy: { seq: "asc" },
       select: {
@@ -45,7 +47,7 @@ export async function POST() {
         hash: true,
         sig: true,
       },
-    });
+    }));
 
     const masalah: HasilPeriksa["masalah"] = [];
     let tandaTanganSah = 0;

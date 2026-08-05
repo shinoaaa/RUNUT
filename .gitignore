@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# contohnya justru harus ikut, supaya orang lain tahu variabel apa yang dibutuhkan
+!.env.example
 
 # vercel
 .vercel

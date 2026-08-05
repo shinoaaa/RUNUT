@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { kapasitasWadahL } from "@/lib/rute";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   const id = Number(new URL(req.url).searchParams.get("warung"));
   if (!id) return NextResponse.json({ ok: false, pesan: "warung tidak disebut" }, { status: 400 });
 
-  const [warung, terakhir] = await Promise.all([
+  const [warung, terakhir] = await coba(() => Promise.all([
     db.warung.findUnique({
       where: { id },
       select: { estimasiLMinggu: true },
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
       orderBy: { dibuatAt: "desc" },
       select: { dibuatAt: true },
     }),
-  ]);
+  ]));
   if (!warung) return NextResponse.json({ ok: false, pesan: "warung tidak ada" }, { status: 404 });
 
   const hari = terakhir

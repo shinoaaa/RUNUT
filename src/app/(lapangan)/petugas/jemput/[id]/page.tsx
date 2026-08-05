@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { LayarTimbang } from "@/components/petugas/LayarTimbang";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { sesiSekarang } from "@/lib/sesi";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export default async function HalamanJemput({
   if (!sesi) redirect("/masuk");
 
   const { id } = await params;
-  const warung = await db.warung.findUnique({
+  const warung = await coba(() => db.warung.findUnique({
     where: { id: Number(id) },
     select: {
       id: true,
@@ -27,17 +27,19 @@ export default async function HalamanJemput({
       qrToken: true,
       kecamatan: { select: { nama: true } },
     },
-  });
+  }));
   if (!warung) notFound();
 
   // Peran selain petugas tetap boleh menelusuri alur ini.
   let petugasId = sesi.id;
   if (sesi.peran !== "PETUGAS") {
-    const p = await db.pengguna.findFirst({ where: { peran: "PETUGAS", aktif: true } });
+    const p = await coba(() =>
+      db.pengguna.findFirst({ where: { peran: "PETUGAS", aktif: true } }),
+    );
     if (p) petugasId = p.id;
   }
 
-  const [perangkat, harga] = await Promise.all([
+  const [perangkat, harga] = await coba(() => Promise.all([
     db.perangkat.findFirst({
       where: { aktif: true, OR: [{ petugasId }, { petugasId: null }] },
       orderBy: { petugasId: "desc" },
@@ -47,7 +49,7 @@ export default async function HalamanJemput({
       where: { berlakuDari: { lte: new Date() } },
       orderBy: { berlakuDari: "desc" },
     }),
-  ]);
+  ]));
 
   return (
     <LayarTimbang

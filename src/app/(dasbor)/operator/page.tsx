@@ -9,7 +9,7 @@ import {
   Th,
   Tombol,
 } from "@/components/ui";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { ASUMSI } from "@/lib/statistik";
 import { angka, tanggal } from "@/lib/format";
 import { buatLot } from "@/app/operator/aksi";
@@ -26,7 +26,7 @@ const NADA_LOT = {
 
 export default async function HalamanOperator() {
   await pastikanAkses("/operator");
-  const [trip, lot, titikKumpul] = await Promise.all([
+  const [trip, lot, titikKumpul] = await coba(() => Promise.all([
     db.trip.findMany({
       where: { status: "DISETOR" },
       orderBy: { tanggal: "desc" },
@@ -56,7 +56,7 @@ export default async function HalamanOperator() {
       },
     }),
     db.titikKumpul.findFirst({ select: { id: true, nama: true } }),
-  ]);
+  ]));
 
   const belumMasukLot = trip.filter((t) => t.lotTrip.length === 0);
   const stokG = belumMasukLot.reduce(

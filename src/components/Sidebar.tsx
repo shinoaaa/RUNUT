@@ -76,14 +76,25 @@ export function Sidebar({
         <p className="text-[11px] text-white/45">
           {KETERANGAN_PERAN[pengguna.peran]}
         </p>
-        <form action={keluar}>
-          <button
-            type="submit"
-            className="mt-2 text-[12px] text-white/60 underline underline-offset-4 hover:text-white"
+        {/* Dua jalan keluar yang berbeda: "Beranda" menuju halaman publik
+            tanpa memutus sesi, "Keluar" memutus sesi lalu ke /masuk. */}
+        <div className="mt-2 flex items-center gap-3">
+          <Link
+            href="/"
+            onClick={() => setBuka(false)}
+            className="text-[12px] text-white/60 underline underline-offset-4 hover:text-white"
           >
-            Keluar
-          </button>
-        </form>
+            Beranda
+          </Link>
+          <form action={keluar}>
+            <button
+              type="submit"
+              className="text-[12px] text-white/60 underline underline-offset-4 hover:text-white"
+            >
+              Keluar
+            </button>
+          </form>
+        </div>
       </div>
     </nav>
   );

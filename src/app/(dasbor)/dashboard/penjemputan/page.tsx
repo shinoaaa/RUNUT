@@ -1,5 +1,5 @@
 import { KartuAngka, Kosong, Panel, Pil, Tabel, Td, Th } from "@/components/ui";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { angka, rupiah, tanggalJam } from "@/lib/format";
 import { pastikanAkses } from "@/lib/sesi";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HalamanPenjemputan() {
   await pastikanAkses("/dashboard/penjemputan");
-  const [daftar, ringkas, tanpaGps, tanpaKonfirmasi] = await Promise.all([
+  const [daftar, ringkas, tanpaGps, tanpaKonfirmasi] = await coba(() => Promise.all([
     db.penjemputan.findMany({
       orderBy: { dibuatAt: "desc" },
       take: 60,
@@ -30,7 +30,7 @@ export default async function HalamanPenjemputan() {
     db.penjemputan.aggregate({ _sum: { beratBersihG: true, nilaiRp: true }, _count: true }),
     db.penjemputan.count({ where: { gpsOk: false } }),
     db.penjemputan.count({ where: { konfirmasiOk: false } }),
-  ]);
+  ]));
 
   return (
     <div className="px-5 py-6 lg:px-8">

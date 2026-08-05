@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { RuteHariIni } from "@/components/petugas/RuteHariIni";
+import { keluar } from "@/app/masuk/aksi";
 import { susunRute } from "@/lib/rute";
 import { sesiSekarang } from "@/lib/sesi";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 
 export const metadata = { title: "Rute Hari Ini" };
 export const dynamic = "force-dynamic";
@@ -16,7 +17,9 @@ export default async function HalamanRute() {
   let petugasId = sesi.id;
   let nama = sesi.nama;
   if (sesi.peran !== "PETUGAS") {
-    const p = await db.pengguna.findFirst({ where: { peran: "PETUGAS", aktif: true } });
+    const p = await coba(() =>
+      db.pengguna.findFirst({ where: { peran: "PETUGAS", aktif: true } }),
+    );
     if (p) {
       petugasId = p.id;
       nama = `${p.nama} (dilihat sebagai ${sesi.peran.toLowerCase()})`;
@@ -31,5 +34,7 @@ export default async function HalamanRute() {
     year: "numeric",
   }).format(new Date());
 
-  return <RuteHariIni rute={rute} namaPetugas={nama} tanggal={tanggal} />;
+  return (
+    <RuteHariIni rute={rute} namaPetugas={nama} tanggal={tanggal} keluar={keluar} />
+  );
 }

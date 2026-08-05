@@ -13,7 +13,7 @@
 import { NextResponse } from "next/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { Amplop, JenisKejadian, tandatangani } from "@/lib/bukti";
 
 export const runtime = "nodejs";
@@ -40,9 +40,9 @@ interface Permintaan {
 export async function POST(req: Request) {
   const p = (await req.json()) as Permintaan;
 
-  const perangkat = await db.perangkat.findUnique({
-    where: { deviceId: p.device_id },
-  });
+  const perangkat = await coba(() =>
+    db.perangkat.findUnique({ where: { deviceId: p.device_id } }),
+  );
   if (!perangkat)
     return NextResponse.json({ ok: false, pesan: "Perangkat tidak dikenal" }, { status: 404 });
 
@@ -54,10 +54,12 @@ export async function POST(req: Request) {
     );
 
   // Kejadian terakhir dipakai untuk meniru pengiriman ulang.
-  const terakhir = await db.kejadianAlat.findFirst({
-    where: { perangkatId: perangkat.id },
-    orderBy: { seq: "desc" },
-  });
+  const terakhir = await coba(() =>
+    db.kejadianAlat.findFirst({
+      where: { perangkatId: perangkat.id },
+      orderBy: { seq: "desc" },
+    }),
+  );
 
   if (p.nakal === "ulang") {
     if (!terakhir)

@@ -21,10 +21,12 @@ export function RuteHariIni({
   rute,
   namaPetugas,
   tanggal,
+  keluar,
 }: {
   rute: RuteHarian;
   namaPetugas: string;
   tanggal: string;
+  keluar: () => Promise<void>;
 }) {
   const [saring, setSaring] = useState<"semua" | "mendesak" | "diminta">("semua");
 
@@ -44,8 +46,25 @@ export function RuteHariIni({
     <div className="flex min-h-dvh flex-col">
       {/* kepala */}
       <header className="bg-brand px-4 pb-4 pt-5 text-white sm:rounded-t-card">
-        <p className="text-[13px] text-white/70">{tanggal}</p>
-        <h1 className="mt-0.5 text-[21px] font-bold leading-tight">{namaPetugas}</h1>
+        {/* Ini pangkal alur lapangan, jadi tidak ada tempat untuk "kembali".
+            Yang dibutuhkan petugas justru jalan KELUAR — tanpa ini dia
+            terkunci di dalam aplikasi dan tidak bisa berganti akun. */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] text-white/70">{tanggal}</p>
+            <h1 className="mt-0.5 truncate text-[21px] font-bold leading-tight">
+              {namaPetugas}
+            </h1>
+          </div>
+          <form action={keluar}>
+            <button
+              type="submit"
+              className="shrink-0 rounded-btn border border-white/25 px-2.5 py-1 text-[12px] text-white/85 transition-colors hover:bg-white/10"
+            >
+              Keluar
+            </button>
+          </form>
+        </div>
 
         <div className="mt-4 flex items-baseline justify-between text-sm">
           <span>

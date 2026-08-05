@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { masuk, masukCepat } from "./aksi";
 import { FormMasuk } from "./FormMasuk";
+import { TautanKembali } from "@/components/ui";
 import type { Peran } from "@/lib/sesi";
 
 export const metadata = { title: "Masuk" };
@@ -16,6 +17,10 @@ export default function HalamanMasuk() {
   return (
     <main className="grid min-h-dvh place-items-center px-5 py-10">
       <div className="w-full max-w-sm">
+        <TautanKembali href="/" className="mb-5">
+          Beranda
+        </TautanKembali>
+
         <div className="mb-7 flex items-center gap-2.5">
           <Image src="/brand/logomark.svg" alt="" width={34} height={34} className="text-brand" />
           <div>

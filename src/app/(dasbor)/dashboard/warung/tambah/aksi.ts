@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { pastikanAkses } from "@/lib/sesi";
+import { pastikanKemampuan } from "@/lib/sesi";
 import { hitungEstimasi, petaKategori, type KelasSkala } from "@/lib/estimasi";
 
 export interface HasilTambah {
@@ -17,7 +17,9 @@ export async function tambahWarung(
   _sebelumnya: unknown,
   form: FormData,
 ): Promise<HasilTambah> {
-  await pastikanAkses("/dashboard/warung");
+  // Izin MENAMBAH, bukan izin melihat registri. Kalau memakai yang
+  // kedua, Pemda ikut bisa membuat warung hanya karena boleh melihatnya.
+  await pastikanKemampuan("warung:tambah");
 
   const nama = String(form.get("nama") ?? "").trim();
   const kategori = String(form.get("kategori") ?? "lainnya");

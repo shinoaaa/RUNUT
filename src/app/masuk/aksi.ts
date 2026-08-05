@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { BERANDA_PERAN, Peran, hapusSesi, pasangSesi, penggunaDemo } from "@/lib/sesi";
 
 export async function masuk(_sebelumnya: unknown, form: FormData) {
@@ -11,7 +11,7 @@ export async function masuk(_sebelumnya: unknown, form: FormData) {
 
   if (!email || !sandi) return { galat: "Email dan kata sandi harus diisi." };
 
-  const p = await db.pengguna.findUnique({ where: { email } });
+  const p = await coba(() => db.pengguna.findUnique({ where: { email } }));
   if (!p || !p.aktif) return { galat: "Akun tidak ditemukan." };
 
   const cocok = await bcrypt.compare(sandi, p.sandiHash);

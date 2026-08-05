@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useState } from "react";
 import {
   Area,
@@ -38,9 +39,12 @@ const PetaWilayah = dynamic(
 export function Dasbor({
   s,
   asumsi,
+  publik = false,
 }: {
   s: StatistikDasbor;
   asumsi: Array<{ langkah: string; nilai: string; sifat: string }>;
+  /** Dibuka tanpa akun. Isinya sama — yang berbeda hanya keterangannya. */
+  publik?: boolean;
 }) {
   const [bukaAsumsi, setBukaAsumsi] = useState(false);
   const teratas = s.wilayah.filter((w) => w.jumlahWarung > 0).slice(0, 6);
@@ -54,6 +58,23 @@ export function Dasbor({
           Kabupaten Bekasi · 30 hari terakhir
         </p>
       </header>
+
+      {publik && (
+        <div className="mb-5 rounded-card border border-line bg-accent-soft p-4">
+          <p className="text-sm font-medium">Tampilan publik, hanya angka wilayah</p>
+          <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-ink-2">
+            Seluruh angka di halaman ini berlaku pada tingkat kecamatan dan
+            kabupaten. Registri warung, catatan penjemputan, kesehatan perangkat,
+            serta penyusunan lot memuat data usaha perorangan dan hanya terbuka
+            bagi petugas program yang berwenang.
+          </p>
+          <p className="mt-2 text-[13px]">
+            <Link href="/masuk" className="text-accent underline underline-offset-4">
+              Masuk sebagai petugas program
+            </Link>
+          </p>
+        </div>
+      )}
 
       {/* angka utama */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

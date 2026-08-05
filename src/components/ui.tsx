@@ -1,8 +1,45 @@
 import * as React from "react";
+import Link from "next/link";
 
 /** Penggabung kelas sederhana — tanpa dependensi tambahan. */
 export function cn(...v: Array<string | false | null | undefined>) {
   return v.filter(Boolean).join(" ");
+}
+
+/* ============================================================
+   Tautan kembali
+   ============================================================ */
+
+/**
+ * Tautan naik satu tingkat, ditaruh di atas judul halaman.
+ *
+ * Sengaja menyebut TUJUANNYA, bukan sekadar "Kembali". Tombol kembali
+ * peramban mengingat riwayat, sedangkan halaman tidak — juri yang membuka
+ * alamat langsung atau memindai QR tidak punya riwayat sama sekali, jadi
+ * tiap halaman harus menyatakan sendiri ke mana ia bermuara.
+ */
+export function TautanKembali({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center gap-1 text-[13px] text-ink-3",
+        "transition-colors hover:text-ink",
+        className,
+      )}
+    >
+      <span aria-hidden>←</span>
+      {children}
+    </Link>
+  );
 }
 
 /* ============================================================

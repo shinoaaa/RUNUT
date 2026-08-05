@@ -1,13 +1,19 @@
 import { Dasbor } from "@/components/Dasbor";
 import { ASUMSI, KG_CO2_PER_LITER_JELANTAH, statistikDasbor } from "@/lib/statistik";
 import { angka } from "@/lib/format";
-import { pastikanAkses } from "@/lib/sesi";
+import { pastikanAkses, sesiSekarang } from "@/lib/sesi";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
 export default async function HalamanDasbor() {
-  await pastikanAkses("/dashboard");
+  // Halaman ini punya dua wajah. Tanpa akun ia terbuka sebagai tampilan
+  // publik baca-saja, karena seluruh isinya angka tingkat wilayah — tidak
+  // ada satu pun data warung perorangan maupun tombol yang mengubah data.
+  // Dengan akun, penjaga peran tetap berlaku seperti biasa.
+  const sesi = await sesiSekarang();
+  if (sesi) await pastikanAkses("/dashboard");
+
   const s = await statistikDasbor();
 
   const asumsi = [
@@ -53,5 +59,5 @@ export default async function HalamanDasbor() {
     },
   ];
 
-  return <Dasbor s={s} asumsi={asumsi} />;
+  return <Dasbor s={s} asumsi={asumsi} publik={!sesi} />;
 }

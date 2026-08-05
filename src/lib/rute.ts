@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { jarakMeter } from "@/lib/bukti";
 import { ASUMSI } from "@/lib/statistik";
 
@@ -70,7 +70,7 @@ export async function susunRute(petugasId: number): Promise<RuteHarian> {
   const awalHari = new Date();
   awalHari.setHours(0, 0, 0, 0);
 
-  const [warung, terakhirDijemput, permintaan, titikKumpul, hariIni] = await Promise.all([
+  const [warung, terakhirDijemput, permintaan, titikKumpul, hariIni] = await coba(() => Promise.all([
     db.warung.findMany({
       where: { aktif: true, kecamatanId: { not: null }, statusVerifikasi: { not: "TUTUP_PERMANEN" } },
       select: {
@@ -91,7 +91,7 @@ export async function susunRute(petugasId: number): Promise<RuteHarian> {
       where: { petugasId, dibuatAt: { gte: awalHari } },
       select: { warungId: true, beratBersihG: true },
     }),
-  ]);
+  ]));
 
   const kapanTerakhir = new Map(
     terakhirDijemput.map((t) => [t.warungId, t._max.dibuatAt?.getTime() ?? null]),

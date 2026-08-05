@@ -16,7 +16,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import {
   AMBANG_GPS_M,
   Amplop,
@@ -46,9 +46,14 @@ export async function POST(req: Request) {
     return tolak("Amplop tidak lengkap", 400);
 
   // 1. perangkat
-  const perangkat = await db.perangkat.findUnique({
-    where: { deviceId: a.device_id },
-  });
+  //
+  // Hanya pembacaan SEBELUM transaksi yang boleh diulang. Isi transaksinya
+  // sendiri sengaja tidak dibungkus: kalau sambungannya putus di tengah
+  // jalan, transaksi itu sudah batal seluruhnya, dan mengulang satu
+  // perintah di dalamnya hanya akan menghasilkan keadaan yang menyesatkan.
+  const perangkat = await coba(() =>
+    db.perangkat.findUnique({ where: { deviceId: a.device_id } }),
+  );
   if (!perangkat) return tolak("Perangkat tidak terdaftar", 404);
 
   // 2. tanda tangan
@@ -57,9 +62,9 @@ export async function POST(req: Request) {
     return tolak("Tanda tangan tidak sah", 401, { alasan: "TANDA_TANGAN_PALSU" });
 
   // 3. idempoten — pengiriman ulang tidak boleh dihitung dua kali
-  const sudahAda = await db.kejadianAlat.findUnique({
-    where: { eventId: a.event_id },
-  });
+  const sudahAda = await coba(() =>
+    db.kejadianAlat.findUnique({ where: { eventId: a.event_id } }),
+  );
   if (sudahAda)
     return NextResponse.json({
       ok: true,

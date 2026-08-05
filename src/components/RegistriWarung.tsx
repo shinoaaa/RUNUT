@@ -39,9 +39,12 @@ const NADA_PIL: Record<StatusWarung, "ok" | "warn" | "bahaya" | "netral"> = {
 export function RegistriWarung({
   data,
   kecamatan,
+  bolehTambah,
 }: {
   data: TitikWarung[];
   kecamatan: string[];
+  /** Menyembunyikan tombolnya saja. Penjaga sebenarnya ada di aksinya. */
+  bolehTambah: boolean;
 }) {
   const [cari, setCari] = useState("");
   const [filterKec, setFilterKec] = useState("");
@@ -77,9 +80,11 @@ export function RegistriWarung({
             {angka(jumlahBerisiko)} berisiko
           </p>
         </div>
-        <Link href="/dashboard/warung/tambah">
-          <Tombol>Tambah warung</Tombol>
-        </Link>
+        {bolehTambah && (
+          <Link href="/dashboard/warung/tambah">
+            <Tombol>Tambah warung</Tombol>
+          </Link>
+        )}
       </header>
 
       {/* saringan */}

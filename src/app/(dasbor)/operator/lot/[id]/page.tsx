@@ -2,8 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
-import { KartuAngka, Panel, Pil, Tabel, Td, Th, Tombol } from "@/components/ui";
-import { db } from "@/lib/db";
+import { KartuAngka, Panel, Pil, Tabel, Td, Th, TautanKembali, Tombol } from "@/components/ui";
+import { coba, db } from "@/lib/db";
 import { ASUMSI } from "@/lib/statistik";
 import { angka, rupiah, tanggal } from "@/lib/format";
 import { serahkanLot, tutupLot, ubahIsiLot } from "@/app/operator/aksi";
@@ -20,7 +20,7 @@ export default async function HalamanLot({
   const { id } = await params;
   const lotId = Number(id);
 
-  const lot = await db.lot.findUnique({
+  const lot = await coba(() => db.lot.findUnique({
     where: { id: lotId },
     select: {
       id: true,
@@ -52,7 +52,7 @@ export default async function HalamanLot({
         },
       },
     },
-  });
+  }));
   if (!lot) notFound();
 
   const terbuka = lot.status === "TERBUKA";
@@ -60,7 +60,7 @@ export default async function HalamanLot({
   const idDipakai = new Set(tripDipakai.map((t) => t.id));
 
   const tersedia = terbuka
-    ? await db.trip.findMany({
+    ? await coba(() => db.trip.findMany({
         where: { status: "DISETOR", lotTrip: { none: {} } },
         orderBy: { tanggal: "desc" },
         take: 25,
@@ -73,7 +73,7 @@ export default async function HalamanLot({
           petugas: { select: { nama: true } },
           _count: { select: { penjemputan: true } },
         },
-      })
+      }))
     : [];
 
   const jumlahWarung = tripDipakai.reduce((a, t) => a + t.penjemputan.length, 0);
@@ -100,9 +100,7 @@ export default async function HalamanLot({
     <div className="px-5 py-6 lg:px-8">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link href="/operator" className="text-[13px] text-ink-3 hover:text-ink">
-            ← Titik Kumpul
-          </Link>
+          <TautanKembali href="/operator">Titik Kumpul</TautanKembali>
           <h1 className="mt-1 font-mono text-[26px] font-bold leading-tight">{lot.kode}</h1>
           <p className="mt-1 text-sm text-ink-2">
             {lot.titikKumpul.nama} · dibuat {tanggal(lot.dibuatAt)}

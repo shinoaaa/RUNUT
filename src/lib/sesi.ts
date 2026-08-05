@@ -9,8 +9,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
-import { bolehAkses } from "@/lib/menu";
+import { coba, db } from "@/lib/db";
+import { bolehAkses, bolehMenulis, type Kemampuan } from "@/lib/menu";
 
 export type Peran = "PETUGAS" | "OPERATOR" | "PEMDA" | "ADMIN";
 
@@ -81,7 +81,10 @@ export const BERANDA_PERAN: Record<Peran, string> = {
 };
 
 export async function penggunaDemo(peran: Peran) {
-  return db.pengguna.findFirst({ where: { peran, aktif: true } });
+  // Tombol masuk cepat adalah pintu pertama yang disentuh juri. Kalau
+  // basis datanya baru bangun dan kueri ini gagal, tidak ada satu pun
+  // halaman lain yang sempat dilihat.
+  return coba(() => db.pengguna.findFirst({ where: { peran, aktif: true } }));
 }
 
 /**
@@ -94,4 +97,25 @@ export async function pastikanAkses(path: string): Promise<Sesi> {
   if (!s) redirect("/masuk");
   if (!bolehAkses(s.peran, path)) redirect(BERANDA_PERAN[s.peran]);
   return s;
+}
+
+/**
+ * Penjaga untuk yang MENGUBAH data.
+ *
+ * Wajib dipanggil di dalam server action-nya sendiri, bukan hanya di
+ * halaman yang memuat tombolnya. Server action adalah alamat HTTP yang
+ * bisa dipanggil siapa saja, dan pengenalnya ikut terkirim ke peramban —
+ * menyembunyikan tombolnya tidak menutup jalannya sama sekali.
+ */
+export async function pastikanKemampuan(k: Kemampuan): Promise<Sesi> {
+  const s = await sesiSekarang();
+  if (!s) redirect("/masuk");
+  if (!bolehMenulis(s.peran, k)) redirect(BERANDA_PERAN[s.peran]);
+  return s;
+}
+
+/** Bentuk yang tidak mengalihkan — dipakai untuk menyembunyikan tombol. */
+export async function punyaKemampuan(k: Kemampuan): Promise<boolean> {
+  const s = await sesiSekarang();
+  return s ? bolehMenulis(s.peran, k) : false;
 }

@@ -63,3 +63,35 @@ export function bolehAkses(peran: Peran, path: string): boolean {
   if (peran === "ADMIN") return true;
   return MENU_PERAN[peran].some((k) => k.isi.some((m) => m.href === path));
 }
+
+/* ============================================================
+   Kemampuan menulis
+   ============================================================ */
+
+/**
+ * Izin MENGUBAH data, didaftarkan terpisah dari izin melihatnya.
+ *
+ * Sebelumnya keduanya satu: penambahan warung memakai `bolehAkses`
+ * atas "/dashboard/warung", yaitu izin MEMBACA registri. Akibatnya
+ * Pemda — yang perannya mengawasi — ikut boleh membuat data warung
+ * hanya karena ia boleh melihatnya.
+ *
+ * Membaca dan menulis adalah dua pertanyaan berbeda, jadi didaftarkan
+ * sebagai dua daftar berbeda. Peran yang tidak disebut di sini tidak
+ * bisa mengubah apa pun, sebanyak apa pun halaman yang boleh dibukanya.
+ */
+export type Kemampuan = "warung:tambah" | "lot:kelola";
+
+const KEMAMPUAN_PERAN: Record<Peran, Kemampuan[]> = {
+  // Petugas bekerja lewat alat, bukan lewat papan ketik. Semua
+  // perubahan datanya masuk sebagai kejadian alat yang bertanda tangan.
+  PETUGAS: [],
+  OPERATOR: ["warung:tambah", "lot:kelola"],
+  // Pengawas. Melihat semuanya, mengubah tidak satu pun.
+  PEMDA: [],
+  ADMIN: ["warung:tambah", "lot:kelola"],
+};
+
+export function bolehMenulis(peran: Peran, k: Kemampuan): boolean {
+  return KEMAMPUAN_PERAN[peran].includes(k);
+}

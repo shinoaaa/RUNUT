@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Setor } from "@/components/petugas/Setor";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { sesiSekarang } from "@/lib/sesi";
 import { ASUMSI } from "@/lib/statistik";
 import { jam } from "@/lib/format";
@@ -14,14 +14,16 @@ export default async function HalamanSetor() {
 
   let petugasId = sesi.id;
   if (sesi.peran !== "PETUGAS") {
-    const p = await db.pengguna.findFirst({ where: { peran: "PETUGAS", aktif: true } });
+    const p = await coba(() =>
+      db.pengguna.findFirst({ where: { peran: "PETUGAS", aktif: true } }),
+    );
     if (p) petugasId = p.id;
   }
 
   const awalHari = new Date();
   awalHari.setHours(0, 0, 0, 0);
 
-  const [trip, perangkat, titikKumpul] = await Promise.all([
+  const [trip, perangkat, titikKumpul] = await coba(() => Promise.all([
     db.trip.findFirst({
       where: { petugasId, status: "BERJALAN", tanggal: { gte: awalHari } },
       orderBy: { id: "desc" },
@@ -44,7 +46,7 @@ export default async function HalamanSetor() {
       select: { deviceId: true },
     }),
     db.titikKumpul.findFirst({ select: { id: true, nama: true } }),
-  ]);
+  ]));
 
   return (
     <Setor

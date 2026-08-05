@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { Simulator } from "@/components/Simulator";
 import { pastikanAkses } from "@/lib/sesi";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HalamanSimulator() {
   await pastikanAkses("/simulator");
-  const [alat, warung, trip, titikKumpul] = await Promise.all([
+  const [alat, warung, trip, titikKumpul] = await coba(() => Promise.all([
     db.perangkat.findMany({
       where: { aktif: true },
       select: { deviceId: true, lastSeq: true, petugasId: true, petugas: { select: { nama: true } } },
@@ -25,7 +25,7 @@ export default async function HalamanSimulator() {
       select: { id: true, totalGWarung: true },
     }),
     db.titikKumpul.findFirst({ select: { id: true } }),
-  ]);
+  ]));
 
   return (
     <Simulator

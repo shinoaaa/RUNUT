@@ -1,5 +1,5 @@
 import { Perangkat } from "@/components/Perangkat";
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { pastikanAkses } from "@/lib/sesi";
 
 export const metadata = { title: "Perangkat" };
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HalamanPerangkat() {
   await pastikanAkses("/dashboard/perangkat");
-  const daftar = await db.perangkat.findMany({
+  const daftar = await coba(() => db.perangkat.findMany({
     orderBy: { deviceId: "asc" },
     select: {
       deviceId: true,
@@ -19,7 +19,7 @@ export default async function HalamanPerangkat() {
       petugas: { select: { nama: true } },
       _count: { select: { kejadian: true } },
     },
-  });
+  }));
 
   return (
     <Perangkat

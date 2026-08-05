@@ -1,8 +1,9 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createHash } from "node:crypto";
-import { Panel, Pil, Tabel, Td, Th } from "@/components/ui";
-import { db } from "@/lib/db";
+import { Panel, Pil, Tabel, Td, Th, TautanKembali } from "@/components/ui";
+import { coba, db } from "@/lib/db";
 import { ASUMSI } from "@/lib/statistik";
 import { angka, tanggal, tanggalJam } from "@/lib/format";
 
@@ -23,7 +24,9 @@ export default async function HalamanTelusur({
 }) {
   const { token } = await params;
 
-  const lot = await db.lot.findUnique({
+  // Halaman ini dibuka juri dengan memindai QR di depan penonton.
+  // Kegagalan sambungan di sini paling mahal harganya.
+  const lot = await coba(() => db.lot.findUnique({
     where: { qrToken: token },
     select: {
       kode: true,
@@ -62,7 +65,7 @@ export default async function HalamanTelusur({
         },
       },
     },
-  });
+  }));
   if (!lot) notFound();
 
   const trip = lot.trip.map((t) => t.trip);
@@ -97,8 +100,13 @@ export default async function HalamanTelusur({
       {/* bilah atas */}
       <div className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-3xl items-center gap-2.5 px-5 py-3">
-          <Image src="/brand/logomark.svg" alt="" width={24} height={24} className="text-brand" />
-          <span className="font-extrabold tracking-wide">RUNUT</span>
+          {/* Halaman ini dibuka dari pemindaian QR, sering tanpa riwayat
+              peramban sama sekali. Logonya dibuat menuju beranda supaya
+              pembacanya punya jalan masuk ke penjelasan sistemnya. */}
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-75">
+            <Image src="/brand/logomark.svg" alt="" width={24} height={24} className="text-brand" />
+            <span className="font-extrabold tracking-wide">RUNUT</span>
+          </Link>
           <span className="ml-auto">
             <Pil nada={utuh === penjemputan.length && rantaiUtuh ? "ok" : "warn"} titik>
               {utuh === penjemputan.length && rantaiUtuh ? "Terverifikasi" : "Perlu ditinjau"}
@@ -250,11 +258,18 @@ export default async function HalamanTelusur({
           </p>
         </section>
 
-        <p className="px-1 pb-6 text-[12px] leading-relaxed text-ink-3">
+        <p className="px-1 text-[12px] leading-relaxed text-ink-3">
           Data dihasilkan oleh perangkat pengukur di lapangan, ditandatangani di alat,
           lalu disambungkan ke rantai hash. Halaman ini dapat dibuka siapa saja tanpa akun.
           RUNUT menyediakan data yang siap diaudit, dan tidak menerbitkan sertifikat apa pun.
         </p>
+
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line px-1 pb-8 pt-4">
+          <TautanKembali href="/">Beranda RUNUT</TautanKembali>
+          <Link href="/masuk" className="text-[13px] text-ink-3 transition-colors hover:text-ink">
+            Masuk sebagai petugas program
+          </Link>
+        </div>
       </div>
     </main>
   );

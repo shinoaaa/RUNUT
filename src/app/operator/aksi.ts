@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { sesiSekarang } from "@/lib/sesi";
+import { pastikanKemampuan } from "@/lib/sesi";
 
 /** Kode lot: BKS-2026-0001, urut per tahun. */
 async function kodeLotBerikutnya() {
@@ -13,9 +13,15 @@ async function kodeLotBerikutnya() {
   return `BKS-${tahun}-${String(jumlah + 1).padStart(4, "0")}`;
 }
 
+/*
+ * Keempat aksi di bawah memeriksa KEMAMPUAN, bukan sekadar "sudah login".
+ * Sebelumnya semuanya hanya memastikan ada sesi, sehingga petugas pun bisa
+ * menutup dan menyerahkan lot dengan memanggil aksinya langsung —
+ * halamannya dijaga, tapi aksinya adalah alamat HTTP tersendiri.
+ */
+
 export async function buatLot(titikKumpulId: number) {
-  const sesi = await sesiSekarang();
-  if (!sesi) redirect("/masuk");
+  await pastikanKemampuan("lot:kelola");
 
   const lot = await db.lot.create({
     data: {
@@ -28,8 +34,7 @@ export async function buatLot(titikKumpulId: number) {
 }
 
 export async function ubahIsiLot(lotId: number, tripId: number, masuk: boolean) {
-  const sesi = await sesiSekarang();
-  if (!sesi) redirect("/masuk");
+  await pastikanKemampuan("lot:kelola");
 
   if (masuk)
     await db.lotTrip.upsert({
@@ -56,8 +61,7 @@ async function hitungUlangBerat(lotId: number) {
 }
 
 export async function tutupLot(lotId: number) {
-  const sesi = await sesiSekarang();
-  if (!sesi) redirect("/masuk");
+  await pastikanKemampuan("lot:kelola");
 
   await hitungUlangBerat(lotId);
   await db.lot.update({
@@ -68,8 +72,7 @@ export async function tutupLot(lotId: number) {
 }
 
 export async function serahkanLot(lotId: number, form: FormData) {
-  const sesi = await sesiSekarang();
-  if (!sesi) redirect("/masuk");
+  await pastikanKemampuan("lot:kelola");
 
   const offtaker = String(form.get("offtaker") ?? "").trim();
   const hargaJual = Number(form.get("hargaJual") ?? 0);

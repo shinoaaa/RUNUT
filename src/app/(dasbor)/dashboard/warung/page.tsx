@@ -1,8 +1,8 @@
-import { db } from "@/lib/db";
+import { coba, db } from "@/lib/db";
 import { RegistriWarung } from "@/components/RegistriWarung";
 import { KG_PER_LITER, statusWarung } from "@/lib/format";
 import type { TitikWarung } from "@/components/peta/tipe";
-import { pastikanAkses } from "@/lib/sesi";
+import { pastikanAkses, punyaKemampuan } from "@/lib/sesi";
 
 export const metadata = { title: "Registri Warung" };
 export const dynamic = "force-dynamic";
@@ -11,12 +11,13 @@ const MINGGU_PER_BULAN = 30 / 7;
 
 export default async function HalamanRegistri() {
   await pastikanAkses("/dashboard/warung");
+  const bolehTambah = await punyaKemampuan("warung:tambah");
   // Halaman ini force-dynamic dan dirender di server tiap permintaan,
   // jadi membaca jam saat ini memang disengaja.
   // eslint-disable-next-line react-hooks/purity
   const sebulanLalu = new Date(Date.now() - 30 * 24 * 3600 * 1000);
 
-  const [warung, terjemput, kecamatan] = await Promise.all([
+  const [warung, terjemput, kecamatan] = await coba(() => Promise.all([
     db.warung.findMany({
       where: { aktif: true },
       select: {
@@ -36,7 +37,7 @@ export default async function HalamanRegistri() {
       _sum: { beratBersihG: true },
     }),
     db.kecamatan.findMany({ select: { nama: true }, orderBy: { nama: "asc" } }),
-  ]);
+  ]));
 
   const petaTerjemput = new Map(
     terjemput.map((t) => [t.warungId, (t._sum.beratBersihG ?? 0) / 1000 / KG_PER_LITER]),
@@ -58,5 +59,11 @@ export default async function HalamanRegistri() {
     };
   });
 
-  return <RegistriWarung data={data} kecamatan={kecamatan.map((k) => k.nama)} />;
+  return (
+    <RegistriWarung
+      data={data}
+      kecamatan={kecamatan.map((k) => k.nama)}
+      bolehTambah={bolehTambah}
+    />
+  );
 }
