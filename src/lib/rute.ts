@@ -57,7 +57,17 @@ export interface RuteHarian {
   titikKumpul: { id: number; nama: string; lat: number; lon: number } | null;
   perhentian: Perhentian[];
   selesai: number;
+  /** Seluruh yang dijemput hari ini, termasuk yang muatannya sudah disetor. */
   totalTerkumpulG: number;
+  /**
+   * Muatan yang MASIH DIBAWA petugas, yaitu milik trip yang belum disetor.
+   *
+   * Dipisahkan dari totalTerkumpulG karena keduanya menjawab pertanyaan
+   * berbeda: yang pertama "sudah kerja berapa hari ini", yang kedua
+   * "masih ada yang perlu disetor atau tidak". Menyatukan keduanya membuat
+   * tombol setor menyala padahal muatannya sudah disetor pagi tadi.
+   */
+  muatanTerbukaG: number;
 }
 
 function tentukanUrgensi(rasioIsi: number, diminta: boolean): Urgensi {
@@ -70,7 +80,7 @@ export async function susunRute(petugasId: number): Promise<RuteHarian> {
   const awalHari = new Date();
   awalHari.setHours(0, 0, 0, 0);
 
-  const [warung, terakhirDijemput, permintaan, titikKumpul, hariIni] = await coba(() => Promise.all([
+  const [warung, terakhirDijemput, permintaan, titikKumpul, hariIni, tripTerbuka] = await coba(() => Promise.all([
     db.warung.findMany({
       where: { aktif: true, kecamatanId: { not: null }, statusVerifikasi: { not: "TUTUP_PERMANEN" } },
       select: {
@@ -90,6 +100,14 @@ export async function susunRute(petugasId: number): Promise<RuteHarian> {
     db.penjemputan.findMany({
       where: { petugasId, dibuatAt: { gte: awalHari } },
       select: { warungId: true, beratBersihG: true },
+    }),
+    // Trip yang belum disetor. Pertanyaannya sama persis dengan yang
+    // ditanyakan halaman setor, supaya kedua halaman tidak pernah
+    // berbeda pendapat tentang ada tidaknya muatan.
+    db.trip.findFirst({
+      where: { petugasId, status: "BERJALAN", tanggal: { gte: awalHari } },
+      orderBy: { id: "desc" },
+      select: { totalGWarung: true },
     }),
   ]));
 
@@ -180,5 +198,6 @@ export async function susunRute(petugasId: number): Promise<RuteHarian> {
     perhentian: [...urut, ...selesai],
     selesai: selesai.length,
     totalTerkumpulG: selesai.reduce((a, b) => a + (b.beratBersihG ?? 0), 0),
+    muatanTerbukaG: tripTerbuka?.totalGWarung ?? 0,
   };
 }

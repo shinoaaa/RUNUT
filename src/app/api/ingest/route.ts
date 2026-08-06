@@ -86,6 +86,33 @@ export async function POST(req: Request) {
   const pesan = pesanTertandatangan(a);
   const hash = hitungHash(a);
 
+  /*
+   * Pembacaan rujukan dikerjakan SEBELUM transaksi dibuka.
+   *
+   * Warung dan harga hanya dibaca, tidak diubah, sehingga tidak menuntut
+   * isolasi transaksi. Menaruhnya di dalam justru berbahaya: tiap kueri ke
+   * basis data menempuh jarak yang jauh, dan transaksi Prisma punya batas
+   * waktu. Dengan sembilan kueri di dalamnya, satu penjemputan sempat
+   * memakan 6,1 detik dan melewati batas bawaan 5 detik — transaksinya
+   * mati di tengah, dan penjemputannya gagal tercatat.
+   */
+  const p0 = a.payload as Record<string, number | string | undefined>;
+  const [warungAwal, hargaAwal] =
+    a.type === "PICKUP"
+      ? await coba(() =>
+          Promise.all([
+            db.warung.findUnique({ where: { id: Number(p0.warung_id) } }),
+            db.harga.findFirst({
+              where: { berlakuDari: { lte: new Date() } },
+              orderBy: { berlakuDari: "desc" },
+            }),
+          ]),
+        )
+      : [null, null];
+
+  if (a.type === "PICKUP" && !warungAwal)
+    return tolak(`Warung ${p0.warung_id} tidak ditemukan`, 404);
+
   // 7 & 8. simpan lalu turunkan
   const hasil = await db.$transaction(async (tx) => {
     const kejadian = await tx.kejadianAlat.create({
@@ -125,6 +152,8 @@ export async function POST(req: Request) {
         perangkat.id,
         p,
         kejadian.recordedAt,
+        warungAwal!,
+        hargaAwal?.rpPerKg ?? 6000,
       );
       return { kejadianId: kejadian.id, ...turunan };
     }
@@ -135,6 +164,12 @@ export async function POST(req: Request) {
     }
 
     return { kejadianId: kejadian.id };
+  }, {
+    // Jarak ke basis data membuat tiap kueri memakan ratusan milidetik.
+    // Batas bawaan 5 detik terlalu sempit untuk itu, dan kegagalannya
+    // tidak kentara: transaksi mati di tengah, badan balasan kosong.
+    timeout: 20_000,
+    maxWait: 15_000,
   });
 
   return NextResponse.json({
@@ -157,25 +192,20 @@ async function turunkanPenjemputan(
   perangkatId: number,
   p: Record<string, number | string | undefined>,
   waktuKejadian: Date,
+  /** Sudah dibaca sebelum transaksi dibuka, supaya isinya tetap ringkas. */
+  warung: { id: number; lat: number; lon: number; statusVerifikasi: string },
+  rpPerKg: number,
 ) {
-  const warungId = Number(p.warung_id);
+  const warungId = warung.id;
   const petugasId = Number(p.petugas_id);
   const grossG = Number(p.gross_g ?? 0);
   const tareG = Number(p.tare_g ?? 0);
   const beratBersihG = Math.max(0, Math.round(grossG - tareG));
 
-  const warung = await tx.warung.findUnique({ where: { id: warungId } });
-  if (!warung) throw new Error(`Warung ${warungId} tidak ditemukan`);
-
   const lat = Number(p.lat ?? warung.lat);
   const lon = Number(p.lon ?? warung.lon);
   const jarak = jarakMeter(lat, lon, warung.lat, warung.lon);
 
-  const harga = await tx.harga.findFirst({
-    where: { berlakuDari: { lte: new Date() } },
-    orderBy: { berlakuDari: "desc" },
-  });
-  const rpPerKg = harga?.rpPerKg ?? 6000;
   const nilaiRp = Math.round((beratBersihG / 1000) * rpPerKg);
 
   // Satu trip per petugas per hari, memakai tanggal menurut ALAT.

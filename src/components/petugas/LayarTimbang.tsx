@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pil, Tombol, cn } from "@/components/ui";
 import { angka, kg, liter, rupiah } from "@/lib/format";
 
@@ -59,11 +59,87 @@ export function LayarTimbang({
   const jam = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => () => { if (jam.current) clearInterval(jam.current); }, []);
 
+  /* ------------------------------------------------------------
+     Pemindaian stiker QR
+
+     Pustaka pemindai hanya dimuat ketika kamera benar-benar dinyalakan.
+     Ia menyentuh navigator dan MediaDevices, sehingga tidak boleh ikut
+     terbawa ke bundel yang dirender di server.
+
+     Kamera tidak dinyalakan otomatis. Petugas menekan sendiri, sebab
+     peramban menuntut izin dan meminta izin tanpa diminta hanya akan
+     ditolak orang. Jalur pengetikan kode tetap tersedia berdampingan
+     supaya alurnya tidak pernah buntu di lapangan yang kameranya rusak,
+     gelap, atau izinnya ditolak.
+     ------------------------------------------------------------ */
+  const WADAH_PINDAI = "wadah-pindai-qr";
+  const pemindai = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
+  const [kamera, setKamera] = useState<"mati" | "menyala" | "ditolak">("mati");
+  const [galatKamera, setGalatKamera] = useState<string | null>(null);
+
+  const hentikanKamera = useCallback(async () => {
+    const p = pemindai.current;
+    pemindai.current = null;
+    if (!p) return;
+    try {
+      await p.stop();
+      p.clear();
+    } catch {
+      // peramban kadang sudah melepas kameranya duluan; tidak apa-apa
+    }
+  }, []);
+
+  useEffect(() => () => { void hentikanKamera(); }, [hentikanKamera]);
+
+  function terimaHasilPindai(teks: string) {
+    const isi = teks.trim();
+    // Stiker memuat token warung. Kode enam huruf tetap diterima supaya
+    // stiker lama maupun pengetikan manual sama-sama bekerja.
+    const cocok =
+      isi === warung.qrToken || isi.toUpperCase() === warung.kodeSingkat;
+
+    if (!cocok) {
+      setGalatKamera("Stiker ini milik warung lain. Periksa kembali alamatnya.");
+      return;
+    }
+    setGalatKamera(null);
+    void hentikanKamera();
+    setKamera("mati");
+    setSalahKode(false);
+    setTahap("timbang");
+  }
+
+  async function nyalakanKamera() {
+    setGalatKamera(null);
+    try {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      const alat = new Html5Qrcode(WADAH_PINDAI, { verbose: false });
+      pemindai.current = alat;
+      setKamera("menyala");
+      await alat.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 200, height: 200 } },
+        (teks) => terimaHasilPindai(teks),
+        () => {
+          // dipanggil tiap bingkai yang belum berisi QR — sengaja diabaikan
+        },
+      );
+    } catch {
+      pemindai.current = null;
+      setKamera("ditolak");
+      setGalatKamera(
+        "Kamera tidak dapat dibuka. Izinnya mungkin ditolak, atau perangkat ini tidak punya kamera belakang. Masukkan kode stiker di bawah.",
+      );
+    }
+  }
+
   const bersihG = bacaan ? Math.max(0, bacaan.gross_g - bacaan.tare_g) : 0;
 
   function periksaKode() {
     if (kodeManual.trim().toUpperCase() === warung.kodeSingkat) {
       setSalahKode(false);
+      void hentikanKamera();
+      setKamera("mati");
       setTahap("timbang");
     } else setSalahKode(true);
   }
@@ -92,11 +168,28 @@ export function LayarTimbang({
     }, 90);
   }
 
+  /**
+   * Mengirim hasil timbang.
+   *
+   * Seluruh badannya dibungkus penjagaan galat, dan itu bukan kehati-hatian
+   * berlebihan: sebelumnya kegagalan apa pun — sambungan putus, balasan
+   * bukan JSON, server membalas 500 berbadan kosong — membuat tombolnya
+   * terkunci pada tulisan "Mengirim…" tanpa pernah pulih. Petugas di
+   * lapangan tidak punya cara keluar selain memuat ulang halaman, dan
+   * timbangannya harus diulang dari awal.
+   */
   async function selesai() {
-    if (!bacaan) return;
+    if (!bacaan || mengirim) return;
     setMengirim(true);
     setGalat(null);
+
+    // Batas waktu supaya tidak menggantung tanpa akhir di sinyal buruk.
+    const pembatal = new AbortController();
+    const jamHabis = setTimeout(() => pembatal.abort(), 30_000);
+
+    try {
     const r = await fetch("/api/simulator/kirim", {
+      signal: pembatal.signal,
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -118,13 +211,39 @@ export function LayarTimbang({
         },
       }),
     });
-    const j = await r.json();
-    setMengirim(false);
-    if (j?.balasan?.ok) {
-      setHasil(j.balasan);
-      setTahap("selesai");
-    } else {
-      setGalat(j?.balasan?.pesan ?? "Gagal mengirim ke server");
+
+      // Balasan galat kadang berbadan kosong atau bukan JSON, sehingga
+      // penguraiannya harus boleh gagal tanpa menjatuhkan seluruh alur.
+      const teks = await r.text();
+      let j: { balasan?: { ok?: boolean; pesan?: string } } | null = null;
+      try {
+        j = teks ? JSON.parse(teks) : null;
+      } catch {
+        j = null;
+      }
+
+      if (j?.balasan?.ok) {
+        setHasil(j.balasan as never);
+        setTahap("selesai");
+        return;
+      }
+
+      setGalat(
+        j?.balasan?.pesan ??
+          (r.ok
+            ? "Balasan server tidak dapat dibaca. Coba kirim ulang."
+            : `Server menolak kiriman (${r.status}). Coba kirim ulang.`),
+      );
+    } catch (e) {
+      setGalat(
+        (e as Error)?.name === "AbortError"
+          ? "Pengiriman melebihi 30 detik. Periksa sinyal, lalu coba kirim ulang."
+          : "Tidak dapat menghubungi server. Periksa sambungan, lalu coba kirim ulang.",
+      );
+    } finally {
+      // Apa pun yang terjadi, tombolnya harus bisa ditekan lagi.
+      clearTimeout(jamHabis);
+      setMengirim(false);
     }
   }
 
@@ -201,14 +320,54 @@ export function LayarTimbang({
           {tahap === "pindai" ? (
             <>
               <p className="text-[13px] font-medium">Pindai stiker QR di warung</p>
-              <div className="mt-3 grid aspect-square w-full place-items-center rounded-card border-2 border-dashed border-line bg-canvas text-center">
-                <div className="px-6">
-                  <p className="text-sm text-ink-2">Arahkan kamera ke stiker</p>
-                  <p className="mt-1 text-[12px] text-ink-3">
-                    Kode pada stiker juga bisa dimasukkan manual di bawah
-                  </p>
+
+              {/* Wadah pemindai selalu ada di pohon DOM karena pustakanya
+                  memasang video ke dalamnya berdasarkan id. Yang berubah
+                  hanya kelihatan atau tidaknya. */}
+              <div
+                id={WADAH_PINDAI}
+                className={cn(
+                  "mt-3 overflow-hidden rounded-card",
+                  kamera === "menyala" ? "block border border-line" : "hidden",
+                )}
+              />
+
+              {kamera !== "menyala" && (
+                <div className="mt-3 grid aspect-square w-full place-items-center rounded-card border-2 border-dashed border-line bg-canvas text-center">
+                  <div className="px-6">
+                    <p className="text-sm text-ink-2">Arahkan kamera ke stiker</p>
+                    <p className="mt-1 text-[12px] text-ink-3">
+                      Kode pada stiker juga bisa dimasukkan manual di bawah
+                    </p>
+                  </div>
                 </div>
+              )}
+
+              <div className="mt-3">
+                {kamera === "menyala" ? (
+                  <Tombol
+                    nada="kedua"
+                    className="w-full"
+                    onClick={() => {
+                      void hentikanKamera();
+                      setKamera("mati");
+                    }}
+                  >
+                    Matikan kamera
+                  </Tombol>
+                ) : (
+                  <Tombol nada="kedua" className="w-full" onClick={nyalakanKamera}>
+                    {kamera === "ditolak" ? "Coba nyalakan kamera lagi" : "Nyalakan kamera"}
+                  </Tombol>
+                )}
               </div>
+
+              {galatKamera && (
+                <p className="mt-2 rounded-btn bg-warn-bg px-3 py-2 text-[12px] text-warn">
+                  {galatKamera}
+                </p>
+              )}
+
               <p className="mt-3 text-[12px] text-ink-3">
                 Tidak ada kamera? Masukkan kode yang tertera di stiker.
               </p>

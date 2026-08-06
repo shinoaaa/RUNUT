@@ -41,7 +41,11 @@ export function RuteHariIni({
 
   const total = belum.length + selesai.length;
   const persen = total > 0 ? (selesai.length / total) * 100 : 0;
-  const adaMuatan = rute.totalTerkumpulG > 0;
+  // Tombol setor mengikuti muatan yang MASIH DIBAWA, bukan seluruh hasil
+  // hari ini. Petugas yang sudah menyetor pagi tadi tidak punya apa-apa
+  // lagi untuk disetor, meskipun angka hari ininya besar.
+  const adaMuatan = rute.muatanTerbukaG > 0;
+  const sudahSetor = !adaMuatan && rute.totalTerkumpulG > 0;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -180,20 +184,20 @@ export function RuteHariIni({
       <div className="sticky bottom-0 border-t border-line bg-surface p-4 sm:rounded-b-card">
         {adaMuatan ? (
           <TautanTombol href="/petugas/setor" besar className="w-full">
-            Setor ke titik kumpul · {liter(rute.totalTerkumpulG)} liter
+            Setor ke titik kumpul · {liter(rute.muatanTerbukaG)} liter
           </TautanTombol>
         ) : (
           <Tombol besar className="w-full" disabled>
-            Belum ada muatan untuk disetor
+            {sudahSetor ? "Muatan hari ini sudah disetor" : "Belum ada muatan untuk disetor"}
           </Tombol>
         )}
-        {rute.titikKumpul && (
-          <p className="mt-2 text-center text-[12px] text-ink-3">
-            {adaMuatan
-              ? `Tujuan: ${rute.titikKumpul.nama}`
+        <p className="mt-2 text-center text-[12px] text-ink-3">
+          {adaMuatan && rute.titikKumpul
+            ? `Tujuan: ${rute.titikKumpul.nama}`
+            : sudahSetor
+              ? `${liter(rute.totalTerkumpulG)} liter terkumpul hari ini dan sudah diserahkan`
               : "Timbang di warung dulu, muatannya terkumpul di sini"}
-          </p>
-        )}
+        </p>
       </div>
     </div>
   );
