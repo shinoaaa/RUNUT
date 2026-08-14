@@ -18,4 +18,6 @@ export interface TitikWarung {
   estimasiLBulan: number;
   terjemputLBulan: number;
   status: StatusWarung;
+  /** Dugaan awal bahwa titik ini gerai berjejaring, bukan pelaku UMKM. */
+  jejaring: boolean;
 }

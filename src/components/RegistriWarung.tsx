@@ -14,6 +14,7 @@ import {
   cn,
 } from "@/components/ui";
 import { LABEL_STATUS, StatusWarung, angka } from "@/lib/format";
+import { LABEL_JENIS, type SaringJenis } from "@/lib/jejaring";
 import type { TitikWarung } from "@/components/peta/tipe";
 import { LegendaWarung } from "@/components/peta/LegendaWarung";
 
@@ -48,6 +49,7 @@ export function RegistriWarung({
   const [cari, setCari] = useState("");
   const [filterKec, setFilterKec] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterJenis, setFilterJenis] = useState<SaringJenis>("");
   const [tab, setTab] = useState<"semua" | "berisiko">("semua");
   const [terpilih, setTerpilih] = useState<number | null>(null);
   const [tampilan, setTampilan] = useState<"peta" | "tabel">("peta");
@@ -58,15 +60,19 @@ export function RegistriWarung({
       if (tab === "berisiko" && w.status !== "berisiko") return false;
       if (filterKec && w.kecamatan !== filterKec) return false;
       if (filterStatus && w.status !== filterStatus) return false;
+      if (filterJenis === "umkm" && w.jejaring) return false;
+      if (filterJenis === "jejaring" && !w.jejaring) return false;
       if (q && !w.nama.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [data, cari, filterKec, filterStatus, tab]);
+  }, [data, cari, filterKec, filterStatus, filterJenis, tab]);
 
   const jumlahBerisiko = useMemo(
     () => data.filter((w) => w.status === "berisiko").length,
     [data],
   );
+
+  const jumlahJejaring = useMemo(() => data.filter((w) => w.jejaring).length, [data]);
 
   // Lembar stiker mengikuti saringan yang sedang aktif. Penyaring di
   // halaman ini sekaligus menjadi alat pemilih warung mana yang dicetak,
@@ -77,6 +83,7 @@ export function RegistriWarung({
     if (cari.trim()) q.set("cari", cari.trim());
     const st = tab === "berisiko" ? "berisiko" : filterStatus;
     if (st) q.set("status", st);
+    if (filterJenis) q.set("jenis", filterJenis);
     const s = q.toString();
     return `/dashboard/warung/stiker${s ? `?${s}` : ""}`;
   })();
@@ -87,8 +94,11 @@ export function RegistriWarung({
         <div>
           <h1 className="text-[26px] font-bold leading-tight">Registri Warung</h1>
           <p className="mt-1 text-sm text-ink-2">
-            {angka(data.length)} warung terdata ·{" "}
-            {angka(data.filter((w) => w.terjemputLBulan > 0).length)} aktif ·{" "}
+            {angka(data.length)} titik terdata ·{" "}
+            <b className="font-semibold text-ink">
+              {angka(data.length - jumlahJejaring)} calon UMKM
+            </b>{" "}
+            · {angka(jumlahJejaring)} gerai berjejaring ·{" "}
             {angka(jumlahBerisiko)} berisiko
           </p>
         </div>
@@ -133,6 +143,15 @@ export function RegistriWarung({
               {LABEL_STATUS[s]}
             </option>
           ))}
+        </select>
+        <select
+          value={filterJenis}
+          onChange={(e) => setFilterJenis(e.target.value as SaringJenis)}
+          className="h-9 rounded-input border border-line bg-surface px-2.5 text-sm"
+        >
+          <option value="">Semua jenis usaha</option>
+          <option value="umkm">{LABEL_JENIS.umkm} saja</option>
+          <option value="jejaring">{LABEL_JENIS.jejaring} saja</option>
         </select>
 
         <div className="ml-auto flex rounded-input border border-line bg-surface p-0.5 lg:hidden">
@@ -237,6 +256,14 @@ export function RegistriWarung({
                         >
                           <Td>
                             <span className="font-medium">{w.nama}</span>
+                            {w.jejaring && (
+                              <span
+                                className="ml-1.5 rounded px-1.5 py-0.5 align-middle text-[10px] font-semibold tracking-[0.04em] bg-mute-bg text-mute"
+                                title="Gerai berjejaring — di luar sasaran program, menunggu dipastikan petugas"
+                              >
+                                JEJARING
+                              </span>
+                            )}
                             <span className="block text-[12px] text-ink-3">{w.kategori}</span>
                           </Td>
                           <Td>{w.kecamatan ?? <span className="text-ink-3">—</span>}</Td>

@@ -1,6 +1,7 @@
 import { coba, db } from "@/lib/db";
 import { RegistriWarung } from "@/components/RegistriWarung";
 import { KG_PER_LITER, statusWarung } from "@/lib/format";
+import { apakahJejaring } from "@/lib/jejaring";
 import type { TitikWarung } from "@/components/peta/tipe";
 import { pastikanAkses, punyaKemampuan } from "@/lib/sesi";
 
@@ -56,6 +57,7 @@ export default async function HalamanRegistri() {
       estimasiLBulan: Number(estimasiLBulan.toFixed(1)),
       terjemputLBulan: Number(terjemputLBulan.toFixed(1)),
       status: statusWarung(estimasiLBulan, terjemputLBulan),
+      jejaring: apakahJejaring(w.nama),
     };
   });
 

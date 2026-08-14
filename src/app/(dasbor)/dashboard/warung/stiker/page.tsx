@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import { TautanKembali } from "@/components/ui";
 import { coba, db } from "@/lib/db";
 import { KG_PER_LITER, statusWarung } from "@/lib/format";
+import { apakahJejaring } from "@/lib/jejaring";
 import { pastikanAkses } from "@/lib/sesi";
 
 export const metadata = { title: "Stiker QR Warung" };
@@ -27,10 +28,10 @@ const MINGGU_PER_BULAN = 30 / 7;
 export default async function HalamanStiker({
   searchParams,
 }: {
-  searchParams: Promise<{ kec?: string; status?: string; cari?: string }>;
+  searchParams: Promise<{ kec?: string; status?: string; cari?: string; jenis?: string }>;
 }) {
   await pastikanAkses("/dashboard/warung");
-  const { kec, status, cari } = await searchParams;
+  const { kec, status, cari, jenis } = await searchParams;
 
   // Halaman ini force-dynamic dan dirender ulang tiap permintaan,
   // jadi membaca jam saat ini memang disengaja.
@@ -67,8 +68,11 @@ export default async function HalamanStiker({
     terjemput.map((t) => [t.warungId, (t._sum.beratBersihG ?? 0) / 1000 / KG_PER_LITER]),
   );
 
-  // Saringan status dihitung di sini karena statusnya turunan, bukan kolom.
+  // Saringan status dan jenis usaha dihitung di sini karena keduanya
+  // turunan, bukan kolom di basis data.
   const tersaring = warung.filter((w) => {
+    if (jenis === "umkm" && apakahJejaring(w.nama)) return false;
+    if (jenis === "jejaring" && !apakahJejaring(w.nama)) return false;
     if (!status) return true;
     const estimasiLBulan = w.estimasiLMinggu * MINGGU_PER_BULAN;
     return statusWarung(estimasiLBulan, petaTerjemput.get(w.id) ?? 0) === status;
@@ -88,6 +92,7 @@ export default async function HalamanStiker({
 
   const keterangan = [
     kec ?? null,
+    jenis === "umkm" ? "calon UMKM saja" : jenis === "jejaring" ? "gerai berjejaring saja" : null,
     status ? `status ${status}` : null,
     cari ? `pencarian "${cari}"` : null,
   ].filter(Boolean);
