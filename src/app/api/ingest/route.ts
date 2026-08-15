@@ -25,6 +25,8 @@ import {
   pesanTertandatangan,
   verifikasiTandaTangan,
 } from "@/lib/bukti";
+import { kodeCocok, sesiHidup } from "@/lib/konfirmasi";
+import { sahAlasan } from "@/lib/alasan";
 import { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -113,6 +115,31 @@ export async function POST(req: Request) {
   if (a.type === "PICKUP" && !warungAwal)
     return tolak(`Warung ${p0.warung_id} tidak ditemukan`, 404);
 
+  /*
+   * Konfirmasi pemilik dicocokkan DI SINI.
+   *
+   * Layar petugas memang mencocokkannya lebih dulu lewat
+   * /api/konfirmasi/periksa, tetapi itu semata supaya salah ketik
+   * ketahuan selagi masih bisa diperbaiki. Yang menentukan isi kolom
+   * `caraKonfirmasi` hanyalah pencocokan ini, sebab muatan yang masuk ke
+   * sini berasal dari alat dan alat tidak berwenang menyatakan bahwa
+   * pemiliknya hadir.
+   *
+   * Kiriman yang kodenya salah TIDAK ditolak. Penimbangannya sungguh
+   * terjadi dan bukti bertanda tangannya tetap harus tersimpan — lapis
+   * bukti bersifat hanya-tambah. Yang berubah cuma catatan tentang
+   * bagaimana bobot itu disetujui.
+   */
+  const sesiKonfirmasi =
+    a.type === "PICKUP" && p0.confirm_code
+      ? await coba(() => sesiHidup(Number(p0.warung_id)))
+      : null;
+
+  const sesiKonfirmasiId =
+    sesiKonfirmasi && kodeCocok(sesiKonfirmasi.kode, String(p0.confirm_code))
+      ? sesiKonfirmasi.id
+      : null;
+
   // 7 & 8. simpan lalu turunkan
   const hasil = await db.$transaction(async (tx) => {
     const kejadian = await tx.kejadianAlat.create({
@@ -154,6 +181,7 @@ export async function POST(req: Request) {
         kejadian.recordedAt,
         warungAwal!,
         hargaAwal?.rpPerKg ?? 6000,
+        sesiKonfirmasiId,
       );
       return { kejadianId: kejadian.id, ...turunan };
     }
@@ -195,6 +223,9 @@ async function turunkanPenjemputan(
   /** Sudah dibaca sebelum transaksi dibuka, supaya isinya tetap ringkas. */
   warung: { id: number; lat: number; lon: number; statusVerifikasi: string },
   rpPerKg: number,
+  /** Sesi yang kodenya benar-benar cocok, atau null. Sudah dicocokkan
+   *  di luar; di sini tinggal dipakai dan ditutup. */
+  sesiKonfirmasiId: number | null,
 ) {
   const warungId = warung.id;
   const petugasId = Number(p.petugas_id);
@@ -216,11 +247,26 @@ async function turunkanPenjemputan(
   const akhirHari = new Date(awalHari);
   akhirHari.setDate(akhirHari.getDate() + 1);
 
+  /*
+   * Trip yang sudah masuk lot tertutup TIDAK boleh bertambah isinya.
+   *
+   * Tanpa syarat terakhir, penjemputan susulan menempel ke trip hari itu
+   * tanpa peduli trip itu sudah dikunci di dalam lot yang bahkan sudah
+   * diserahkan ke offtaker. Akibatnya satu lot menyebut dua angka
+   * berbeda: `lot.beratG` beku sejak ditutup, sedangkan halaman telusur
+   * menjumlah ulang dari penjemputan tiap kali dibuka. Lot yang sudah
+   * diserahkan lalu diam-diam berubah isinya adalah persoalan
+   * ketertelusuran, bukan sekadar angka yang tidak rapi.
+   *
+   * Datanya tidak dibuang: penjemputannya tetap tercatat, hanya masuk ke
+   * trip baru yang belum terikat lot mana pun.
+   */
   let trip = await tx.trip.findFirst({
     where: {
       petugasId,
       tanggal: { gte: awalHari, lt: akhirHari },
       status: { in: ["BERJALAN", "DISETOR"] },
+      lotTrip: { none: { lot: { status: { in: ["TERTUTUP", "DISERAHKAN"] } } } },
     },
   });
   trip ??= await tx.trip.create({
@@ -241,11 +287,41 @@ async function turunkanPenjemputan(
       jarakDariWarungM: Math.round(jarak),
       gpsOk: jarak <= AMBANG_GPS_M,
       qrOk: Boolean(p.qr_ok ?? true),
-      konfirmasiOk: Boolean(p.confirm_code),
+
+      // Sebelumnya kolom ini berbunyi `Boolean(p.confirm_code)` — terisi
+      // apa saja berarti terkonfirmasi, termasuk "0000". Sekarang yang
+      // menentukannya adalah kode yang benar-benar cocok dengan sesi
+      // yang diterbitkan server.
+      caraKonfirmasi: sesiKonfirmasiId ? "KODE_PEMILIK" : "TANPA_KODE",
+      konfirmasiOk: sesiKonfirmasiId !== null, // USANG, lihat skema
+
+      // Alasan hanya berlaku bagi yang memang tanpa kode. Diambil dari
+      // muatan yang ditandatangani alat, bukan dari kolom isian yang
+      // bisa disunting belakangan — itulah yang membuatnya layak
+      // ditampilkan kepada pemilik warung sebagai sesuatu yang bisa
+      // dibantah.
+      ...(sesiKonfirmasiId === null && sahAlasan(p.no_confirm_reason)
+        ? {
+            alasanTanpaKode: p.no_confirm_reason,
+            catatanTanpaKode:
+              typeof p.no_confirm_note === "string"
+                ? p.no_confirm_note.slice(0, 140)
+                : null,
+          }
+        : {}),
       hargaPerKg: rpPerKg,
       nilaiRp,
     },
   });
+
+  // Sekali pakai. Kode yang sudah dipakai tidak boleh menyetujui
+  // penimbangan berikutnya, sebab persetujuan itu berlaku atas satu
+  // bobot tertentu yang pemiliknya lihat, bukan atas warungnya.
+  if (sesiKonfirmasiId)
+    await tx.sesiKonfirmasi.update({
+      where: { id: sesiKonfirmasiId },
+      data: { dipakaiAt: new Date() },
+    });
 
   await tx.trip.update({
     where: { id: trip.id },
@@ -266,6 +342,9 @@ async function turunkanPenjemputan(
     nilaiRp,
     gpsOk: penjemputan.gpsOk,
     jarakM: Math.round(jarak),
+    // Dibalas apa adanya supaya layar petugas menampilkan hasil yang
+    // sesungguhnya tercatat, bukan hasil yang diandaikannya sendiri.
+    caraKonfirmasi: penjemputan.caraKonfirmasi,
   };
 }
 

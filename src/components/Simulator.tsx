@@ -61,6 +61,8 @@ export function Simulator({
   const [gross, setGross] = useState(9240);
   const [tare, setTare] = useState(1180);
   const [geser, setGeser] = useState(false);
+  /** Peragaan penjemputan yang pemiliknya tidak di tempat. */
+  const [tanpaPemilik, setTanpaPemilik] = useState(false);
   const [log, setLog] = useState<Baris[]>([]);
   const [sibuk, setSibuk] = useState(false);
   const berhenti = useRef(false);
@@ -111,8 +113,37 @@ export function Simulator({
     return hasil;
   }
 
-  function muatanPickup(target = w, beratKotor = gross) {
+  /*
+   * Kode konfirmasi diminta ke server, sama seperti yang dilakukan layar
+   * timbang sungguhan.
+   *
+   * Sebelumnya baris ini mengarang empat angka sendiri, dan itu lolos
+   * hanya karena server dulu cuma memeriksa apakah kolomnya terisi.
+   * Sekarang kode karangan tercatat sebagai TANPA_KODE — jadi mengarang
+   * berarti seluruh trip peragaan tampil tanpa konfirmasi pemilik.
+   */
+  async function muatanPickup(target = w, beratKotor = gross) {
     if (!target) return null;
+
+    let confirm_code: string | undefined;
+    if (!tanpaPemilik) {
+      try {
+        const r = await fetch("/api/konfirmasi/minta", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            warungId: target.id,
+            beratBersihG: Math.max(0, beratKotor - tare),
+          }),
+        });
+        const j = await r.json();
+        if (j?.ok) confirm_code = String(j.kode);
+      } catch {
+        // Dibiarkan kosong: penjemputannya tetap terkirim, dan tercatat
+        // sebagai tanpa konfirmasi pemilik — apa adanya.
+      }
+    }
+
     return {
       warung_id: target.id,
       petugas_id: alatTerpilih?.petugasId,
@@ -122,7 +153,9 @@ export function Simulator({
       lon: target.lon,
       gps_accuracy_m: geser ? 18 : 11,
       stable_ms: 1400,
-      confirm_code: String(1000 + Math.floor(Math.random() * 8999)),
+      ...(confirm_code
+        ? { confirm_code }
+        : { no_confirm_reason: "PONSEL_TIDAK_SIAP" }),
       qr_ok: true,
       battery_mv: 3700 + Math.floor(Math.random() * 200),
       rssi_dbm: -70 - Math.floor(Math.random() * 25),
@@ -136,7 +169,7 @@ export function Simulator({
     for (const t of acak) {
       if (berhenti.current) break;
       const kotor = 3000 + Math.floor(Math.random() * 12000);
-      await kirim("PICKUP", muatanPickup(t, kotor)!, undefined, `Jemput ${t.nama}`);
+      await kirim("PICKUP", (await muatanPickup(t, kotor))!, undefined, `Jemput ${t.nama}`);
       await new Promise((r) => setTimeout(r, 900));
     }
     setSibuk(false);
@@ -231,7 +264,16 @@ export function Simulator({
                 Geser GPS ±300 m dari lokasi warung
               </label>
 
-              <Tombol besar disabled={!w || sibuk} onClick={() => kirim("PICKUP", muatanPickup()!)}>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={tanpaPemilik}
+                  onChange={(e) => setTanpaPemilik(e.target.checked)}
+                />
+                Pemilik tidak bisa membuka kode — kirim tanpa konfirmasi
+              </label>
+
+              <Tombol besar disabled={!w || sibuk} onClick={async () => kirim("PICKUP", (await muatanPickup())!)}>
                 Kirim penimbangan
               </Tombol>
             </div>
@@ -246,15 +288,14 @@ export function Simulator({
               <Tombol
                 nada="kedua"
                 disabled={sibuk}
-                onClick={() => kirim("PICKUP", muatanPickup()!, "ulang", "Kirim ulang")}
+                onClick={async () => kirim("PICKUP", (await muatanPickup())!, "ulang", "Kirim ulang")}
               >
                 Kirim ulang kejadian yang sama
               </Tombol>
               <Tombol
                 nada="kedua"
                 disabled={sibuk}
-                onClick={() =>
-                  kirim("PICKUP", muatanPickup()!, "tanda_tangan_palsu", "Tanda tangan palsu")
+                onClick={async () => kirim("PICKUP", (await muatanPickup())!, "tanda_tangan_palsu", "Tanda tangan palsu")
                 }
               >
                 Palsukan tanda tangan
@@ -262,14 +303,14 @@ export function Simulator({
               <Tombol
                 nada="kedua"
                 disabled={sibuk}
-                onClick={() => kirim("PICKUP", muatanPickup()!, "lewati_urut", "Lewati nomor urut")}
+                onClick={async () => kirim("PICKUP", (await muatanPickup())!, "lewati_urut", "Lewati nomor urut")}
               >
                 Lewati nomor urut
               </Tombol>
               <Tombol
                 nada="kedua"
                 disabled={sibuk}
-                onClick={() => kirim("PICKUP", muatanPickup()!, "rantai_putus", "Rantai putus")}
+                onClick={async () => kirim("PICKUP", (await muatanPickup())!, "rantai_putus", "Rantai putus")}
               >
                 Rusak sambungan rantai
               </Tombol>

@@ -1,6 +1,7 @@
 import { KartuAngka, Kosong, Panel, Pil, Tabel, Td, Th } from "@/components/ui";
 import { coba, db } from "@/lib/db";
 import { angka, liter, rupiah, tanggalJam } from "@/lib/format";
+import { KATA_ALASAN } from "@/lib/alasan";
 import { pastikanAkses } from "@/lib/sesi";
 
 export const metadata = { title: "Penjemputan" };
@@ -18,7 +19,9 @@ export default async function HalamanPenjemputan() {
         nilaiRp: true,
         gpsOk: true,
         qrOk: true,
-        konfirmasiOk: true,
+        caraKonfirmasi: true,
+        alasanTanpaKode: true,
+        catatanTanpaKode: true,
         jarakDariWarungM: true,
         dibuatAt: true,
         warung: { select: { nama: true, kecamatan: { select: { nama: true } } } },
@@ -29,7 +32,7 @@ export default async function HalamanPenjemputan() {
     }),
     db.penjemputan.aggregate({ _sum: { beratBersihG: true, nilaiRp: true }, _count: true }),
     db.penjemputan.count({ where: { gpsOk: false } }),
-    db.penjemputan.count({ where: { konfirmasiOk: false } }),
+    db.penjemputan.count({ where: { caraKonfirmasi: "TANPA_KODE" } }),
   ]));
 
   return (
@@ -111,10 +114,28 @@ export default async function HalamanPenjemputan() {
                             GPS {angka(p.jarakDariWarungM ?? 0)} m
                           </Pil>
                         )}
-                        {p.konfirmasiOk ? (
-                          <Pil nada="ok">Dikonfirmasi</Pil>
+                        {/* Sebelumnya lencana ini selalu hijau, sebab
+                            nilainya ditentukan oleh "kolom kode terisi
+                            atau tidak" — dan layar petugas selalu
+                            mengisinya. Sekarang ia menyatakan apakah
+                            pemiliknya benar-benar menyebutkan kode. */}
+                        {p.caraKonfirmasi === "KODE_PEMILIK" ? (
+                          <Pil nada="ok">Dikonfirmasi pemilik</Pil>
                         ) : (
-                          <Pil nada="netral">Tanpa konfirmasi</Pil>
+                          <Pil
+                            nada="warn"
+                            titik
+                            // Alasannya ikut disebut supaya pengawas tidak
+                            // perlu menebak, dan supaya pola yang janggal —
+                            // satu petugas yang selalu memakai alasan yang
+                            // sama — kelihatan tanpa perlu menuduh.
+                            className="max-w-full whitespace-normal"
+                          >
+                            {p.alasanTanpaKode
+                              ? KATA_ALASAN[p.alasanTanpaKode].petugas
+                              : "Tanpa konfirmasi pemilik"}
+                            {p.catatanTanpaKode && `: ${p.catatanTanpaKode}`}
+                          </Pil>
                         )}
                         {rantaiPutus && (
                           <Pil nada="bahaya" titik>

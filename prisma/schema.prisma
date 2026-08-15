@@ -84,6 +84,54 @@ enum StatusPermintaan {
   BATAL
 }
 
+/// Bagaimana bobot sebuah penjemputan disetujui pemiliknya.
+///
+/// Sengaja bukan boolean. Boolean hanya menjawab "disetujui atau tidak",
+/// padahal yang berguna bagi pengawas justru pertanyaan berikutnya:
+/// kalau tidak, kenapa. Penjemputan yang pemiliknya tidak dapat membuka
+/// kode tetap boleh berjalan — jelantahnya nyata dan petugasnya sudah
+/// datang — tetapi tidak boleh menyamar sebagai penjemputan yang disetujui.
+enum CaraKonfirmasi {
+  /// Pemilik membuka halaman warungnya sendiri dan menyebutkan kode yang
+  /// diterbitkan server. Satu-satunya cara yang membuktikan ia menyetujui.
+  KODE_PEMILIK
+
+  /// Pemilik tidak dapat membuka kodenya. Dicatat apa adanya berikut
+  /// alasannya, lalu ditandai di dasbor, di halaman telusur, dan di
+  /// halaman pemilik warung itu sendiri.
+  TANPA_KODE
+}
+
+/// Kenapa sebuah penjemputan berjalan tanpa kode pemilik.
+///
+/// Persoalannya BUKAN kehadiran. Jelantah disimpan di warung, jadi selalu
+/// ada orang yang menyerahkannya — kalau tidak ada, tidak ada yang bisa
+/// dijemput. Yang jadi soal adalah siapa yang dapat membuka halaman
+/// warung: pemiliknya bisa jadi tidak berponsel pintar, ponselnya mati,
+/// kartunya hilang, atau yang menyerahkan memang karyawan sementara
+/// pemiliknya di tempat lain.
+///
+/// Alasan ini ikut MASUK KE MUATAN YANG DITANDATANGANI ALAT, bukan
+/// ditulis belakangan lewat papan ketik. Dengan begitu ia tidak dapat
+/// diubah setelah kejadian, dan pemilik warung membacanya sendiri di
+/// halamannya — sehingga alasan yang mengada-ada dapat ia bantah.
+enum AlasanTanpaKode {
+  /// Pemilik tidak punya ponsel yang dapat memindai atau membuka halaman.
+  TIDAK_PUNYA_PONSEL
+
+  /// Ponselnya ada, tetapi mati, kehabisan daya, atau tidak ada sinyal.
+  PONSEL_TIDAK_SIAP
+
+  /// Kartu QR pemilik hilang atau tertinggal.
+  KARTU_HILANG
+
+  /// Yang menyerahkan jelantah karyawan; pemiliknya sedang di tempat lain.
+  DIWAKILKAN_KARYAWAN
+
+  /// Sebab lain, wajib disertai keterangan tertulis.
+  LAINNYA
+}
+
 // ------------------------------------------------------------
 // LAPIS 1 — MASTER
 // ------------------------------------------------------------
@@ -116,8 +164,26 @@ model Warung {
   kecamatanId Int?
   kecamatan   Kecamatan? @relation(fields: [kecamatanId], references: [id])
 
-  // stiker QR yang ditempel di warung
+  /// Stiker QR yang DITEMPEL di warung. Dipindai petugas sebelum
+  /// menimbang, dan gunanya cuma satu: memastikan bobot tercatat ke
+  /// warung yang benar. Ia sengaja tidak membuka halaman apa pun.
   qrToken String @unique
+
+  /// Kartu QR yang DIPEGANG PEMILIK. Ini yang membuka /w/ — riwayat,
+  /// pendapatan, dan kode konfirmasi yang sedang berjalan.
+  ///
+  /// Wajib berbeda dari `qrToken`, dan itu bukan kerapian belaka.
+  /// Petugas memindai stiker tembok setiap kali menjemput, jadi ia
+  /// otomatis memegang token itu untuk tiap warung yang pernah ia
+  /// datangi. Kalau keduanya sama, petugas tinggal membuka halaman
+  /// pemilik di ponselnya sendiri, membaca kodenya, lalu mengetiknya —
+  /// dan konfirmasi pemilik kembali jadi hiasan.
+  ///
+  /// Sengaja tidak diturunkan dari `qrToken` lewat hash. Kalau
+  /// diturunkan, mengganti token pemilik yang kartunya hilang akan ikut
+  /// mengubah isi stiker temboknya, sehingga stikernya harus dicetak
+  /// dan ditempel ulang padahal yang hilang cuma kartunya.
+  tokenPemilik String @unique
 
   kelasSkala      KelasSkala @default(KECIL)
   estimasiLMinggu Float      @default(0)
@@ -133,6 +199,7 @@ model Warung {
   penjemputan Penjemputan[]
   permintaan  PermintaanJemput[]
   kunjungan   Kunjungan[]
+  sesi        SesiKonfirmasi[]
 
   dibuatAt    DateTime @default(now())
   diperbaruiAt DateTime @updatedAt
@@ -170,6 +237,7 @@ model Pengguna {
   penjemputan Penjemputan[]
   trip        Trip[]
   kunjungan   Kunjungan[]
+  sesi        SesiKonfirmasi[]
 
   @@map("pengguna")
 }
@@ -326,6 +394,23 @@ model Penjemputan {
 
   gpsOk        Boolean @default(false)
   qrOk         Boolean @default(false)
+
+  // Bawaannya TANPA_KODE, bukan sebaliknya: persetujuan pemilik harus
+  // dibuktikan, bukan diandaikan.
+  caraKonfirmasi CaraKonfirmasi @default(TANPA_KODE)
+
+  /// Terisi hanya ketika `caraKonfirmasi` = TANPA_KODE. Diturunkan dari
+  /// muatan yang ditandatangani alat, jadi tidak dapat dikarang setelah
+  /// penjemputan tercatat.
+  alasanTanpaKode  AlasanTanpaKode?
+  catatanTanpaKode String?
+
+  /// USANG — digantikan `caraKonfirmasi`, yang bisa membedakan "pemilik
+  /// tidak di tempat" dari "disetujui pemilik".
+  ///
+  /// Masih ditulis karena basis datanya dipakai bersama versi yang
+  /// sudah tayang, dan versi itu masih membaca kolom ini. Dibuang lewat
+  /// migrasi tahap kedua setelah versi baru naik.
   konfirmasiOk Boolean @default(false)
 
   // harga yang berlaku SAAT ITU, bukan sambungan ke harga terkini
@@ -399,4 +484,48 @@ model PermintaanJemput {
 
   @@index([status])
   @@map("permintaan_jemput")
+}
+
+/// Kode konfirmasi yang sedang menunggu disebutkan pemilik warung.
+///
+/// Berumur pendek dan sekali pakai. Diterbitkan ketika timbangan sudah
+/// stabil, lalu terbaca di dua layar yang berbeda: layar pemilik
+/// (/w/[token]) dan — sebagai jendela peraga yang mengaku dirinya
+/// jendela peraga — layar petugas.
+///
+/// Yang membuatnya berarti adalah tempat pembuatannya. Sebelum ini kode
+/// dibangkitkan di peramban petugas sendiri, ditampilkan kepada petugas
+/// itu juga, dan tidak pernah dicocokkan di mana pun; server hanya
+/// memeriksa apakah kolomnya terisi. Kode yang dibuat, disimpan, dan
+/// dicocokkan di server barulah membuktikan pemiliknya hadir.
+model SesiKonfirmasi {
+  id Int @id @default(autoincrement())
+
+  warungId Int
+  warung   Warung @relation(fields: [warungId], references: [id])
+
+  petugasId Int
+  petugas   Pengguna @relation(fields: [petugasId], references: [id])
+
+  /// Empat angka. Tidak pernah keluar dari server kecuali ke halaman
+  /// warung yang bersangkutan.
+  kode String
+
+  /// Bobot yang sedang diajukan untuk disetujui, disimpan supaya pemilik
+  /// menyetujui angka yang benar-benar dilihatnya — bukan angka yang
+  /// baru muncul sesudah ia menyebutkan kodenya.
+  beratBersihG Int
+
+  /// Berapa kali kode salah sudah dicoba. Tanpa batas ini, empat angka
+  /// bukan pengaman: sepuluh ribu kemungkinan habis dicoba mesin dalam
+  /// hitungan menit, dan pihak yang paling mudah melakukannya justru
+  /// petugas yang sedang diperiksa.
+  percobaan Int @default(0)
+
+  dibuatAt      DateTime  @default(now())
+  kedaluwarsaAt DateTime
+  dipakaiAt     DateTime?
+
+  @@index([warungId, dipakaiAt])
+  @@map("sesi_konfirmasi")
 }

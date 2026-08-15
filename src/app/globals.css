@@ -222,6 +222,46 @@ body {
   color: var(--color-ink-3);
 }
 
+/* ------------------------------------------------------------
+   Kartu pemilik
+
+   Sengaja dibedakan tampilannya dari stiker tembok, sebab keduanya
+   TIDAK boleh tertukar. Stiker tembok memuat token telanjang: dipindai
+   orang lewat, yang muncul cuma tulisan acak. Kartu ini memuat alamat
+   halaman yang memajang pendapatan warung, jadi ia diserahkan kepada
+   pemiliknya dan tidak ditempel di dinding.
+   ------------------------------------------------------------ */
+
+.kartu-pemilik {
+  border: 1.5pt solid var(--color-brand);
+  border-radius: 8px;
+  padding: 4mm 3mm;
+  text-align: center;
+  break-inside: avoid;
+  background: #fff;
+}
+
+.kartu-pemilik-judul {
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+}
+
+.kartu-pemilik-peringatan {
+  margin-top: 2mm;
+  font-size: 7pt;
+  line-height: 1.3;
+  color: var(--color-ink-2);
+}
+
+/* Kartu pemilik dimulai di halaman kertas tersendiri, supaya tidak
+   ada lembar yang memuat stiker tempel dan kartu rahasia sekaligus. */
+.lembar-kartu {
+  break-before: page;
+}
+
 @media print {
   .tanpa-cetak {
     display: none !important;

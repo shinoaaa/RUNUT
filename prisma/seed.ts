@@ -227,6 +227,9 @@ async function main() {
         lon,
         kecamatanId: idKec,
         qrToken: `w_${acak(12)}`,
+        // Token kartu pemilik, sengaja tidak diturunkan dari qrToken —
+        // lihat catatan pada model Warung di skema.
+        tokenPemilik: `p_${acak(12)}`,
         kelasSkala: skala,
         estimasiLMinggu: Number(estimasi.toFixed(2)),
         sumberData: SumberData.OSM,

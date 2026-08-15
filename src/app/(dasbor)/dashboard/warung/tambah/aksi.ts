@@ -65,6 +65,10 @@ export async function tambahWarung(
       sumberData: "PETUGAS",
       statusVerifikasi: "DIKUNJUNGI",
       qrToken: `w_${randomBytes(9).toString("base64url")}`,
+      // Dibangkitkan terpisah, bukan diturunkan dari qrToken: token
+      // pemilik yang kartunya hilang harus dapat diganti tanpa memaksa
+      // stiker temboknya ikut dicetak dan ditempel ulang.
+      tokenPemilik: `p_${randomBytes(9).toString("base64url")}`,
     },
     select: { id: true },
   });

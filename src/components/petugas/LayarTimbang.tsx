@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pil, Tombol, cn } from "@/components/ui";
 import { angka, kg, liter, rupiah } from "@/lib/format";
+import { ALASAN_TANPA_KODE, KATA_ALASAN, type AlasanTanpaKode } from "@/lib/alasan";
 
 export interface WarungTimbang {
   id: number;
@@ -29,6 +30,22 @@ interface Bacaan {
 
 type Tahap = "pindai" | "timbang" | "konfirmasi" | "selesai";
 
+/**
+ * Kenali teks hasil pindai sebagai alamat kartu pemilik, misalnya
+ * "https://runut.vercel.app/w/p_9f2a…".
+ *
+ * Dipakai semata untuk MENOLAKNYA dengan pesan yang tepat, bukan untuk
+ * mencocokkan. Mengembalikan null untuk teks yang bukan alamat.
+ */
+function tokenDariAlamat(teks: string): string | null {
+  try {
+    const bagian = new URL(teks).pathname.split("/").filter(Boolean);
+    return bagian[0] === "w" && bagian[1] ? bagian[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 export function LayarTimbang({
   warung,
   deviceId,
@@ -51,10 +68,35 @@ export function LayarTimbang({
   const [tampil, setTampil] = useState(0); // angka yang sedang bergerak saat alat stabil
 
   const [konfirmasi, setKonfirmasi] = useState("");
-  const [kodeBenar] = useState(() => String(1000 + Math.floor(Math.random() * 8999)));
+
+  /*
+   * Kode konfirmasi TIDAK dibuat di sini.
+   *
+   * Sebelumnya baris ini berbunyi `useState(() => String(1000 + Math.random()
+   * * 8999))`: kode dibangkitkan di peramban petugas, ditampilkan kepada
+   * petugas itu juga, lalu tidak pernah dicocokkan di mana pun. Ia tidak
+   * membuktikan apa-apa, padahal hasilnya muncul sebagai lencana
+   * "dikonfirmasi pemilik" di dasbor pemda dan di halaman telusur publik.
+   *
+   * Sekarang kodenya diterbitkan server dan terbaca pemilik di halaman
+   * warungnya sendiri. Yang disimpan di bawah ini cuma salinan untuk
+   * kotak peraga — supaya alurnya bisa diperagakan tanpa ponsel kedua.
+   */
+  const [kodePeraga, setKodePeraga] = useState<string | null>(null);
+  const [tanpaKode, setTanpaKode] = useState(false);
+  const [alasan, setAlasan] = useState<AlasanTanpaKode | null>(null);
+  const [catatanAlasan, setCatatanAlasan] = useState("");
+  const [memeriksa, setMemeriksa] = useState(false);
+
   const [mengirim, setMengirim] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
-  const [hasil, setHasil] = useState<{ beratBersihG: number; nilaiRp: number; gpsOk: boolean; jarakM: number } | null>(null);
+  const [hasil, setHasil] = useState<{
+    beratBersihG: number;
+    nilaiRp: number;
+    gpsOk: boolean;
+    jarakM: number;
+    caraKonfirmasi: "KODE_PEMILIK" | "TANPA_KODE";
+  } | null>(null);
 
   const jam = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => () => { if (jam.current) clearInterval(jam.current); }, []);
@@ -93,10 +135,28 @@ export function LayarTimbang({
 
   function terimaHasilPindai(teks: string) {
     const isi = teks.trim();
+    /*
+     * Kartu pemilik dikenali lebih dulu, dan SELALU ditolak.
+     *
+     * Warung yang sama punya dua benda ber-QR, dan tokennya sengaja
+     * berbeda: stiker tembok untuk petugas, kartu pemilik untuk membuka
+     * halaman warung. Layar ini tidak pernah boleh menerima yang kedua —
+     * bukan cuma karena tokennya tidak akan cocok, tetapi supaya tidak
+     * ada jalan bagi petugas untuk mengetahui token pemilik dari sini.
+     *
+     * Pesannya tidak menyebut warung mana pun, jadi memindai kartu milik
+     * warung lain tidak membocorkan apa-apa.
+     */
+    if (tokenDariAlamat(isi)) {
+      setGalatKamera(
+        "Itu kartu pemilik warung, bukan stiker penjemputan. Pindai stiker yang ditempel di dinding.",
+      );
+      return;
+    }
+
     // Stiker memuat token warung. Kode enam huruf tetap diterima supaya
-    // stiker lama maupun pengetikan manual sama-sama bekerja.
-    const cocok =
-      isi === warung.qrToken || isi.toUpperCase() === warung.kodeSingkat;
+    // pengetikan manual bekerja saat kameranya rusak atau gelap.
+    const cocok = isi === warung.qrToken || isi.toUpperCase() === warung.kodeSingkat;
 
     if (!cocok) {
       setGalatKamera("Stiker ini milik warung lain. Periksa kembali alamatnya.");
@@ -148,6 +208,12 @@ export function LayarTimbang({
     setMenimbang(true);
     setBacaan(null);
     setTampil(0);
+    setGalat(null);
+    setKonfirmasi("");
+    setTanpaKode(false);
+    setAlasan(null);
+    setCatatanAlasan("");
+    setKodePeraga(null);
     const r = await fetch(`/api/alat/bacaan?warung=${warung.id}`);
     const b: Bacaan = await r.json();
 
@@ -164,8 +230,33 @@ export function LayarTimbang({
         setBacaan(b);
         setMenimbang(false);
         setTahap("konfirmasi");
+        // Kode diminta SESUDAH bobotnya diketahui, dan bobot itu ikut
+        // dititipkan. Dengan begitu yang muncul di layar pemilik adalah
+        // angka yang sedang ia setujui, bukan sekadar empat angka.
+        void mintaKode(target);
       }
     }, 90);
+  }
+
+  /** Minta server menerbitkan kode konfirmasi untuk penimbangan ini. */
+  async function mintaKode(beratBersihG: number) {
+    try {
+      const r = await fetch("/api/konfirmasi/minta", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ warungId: warung.id, beratBersihG }),
+      });
+      const j = await r.json();
+      if (j?.ok) setKodePeraga(String(j.kode));
+      else
+        setGalat(
+          "Kode konfirmasi gagal diterbitkan. Penjemputan masih bisa dilanjutkan tanpa konfirmasi pemilik.",
+        );
+    } catch {
+      setGalat(
+        "Kode konfirmasi gagal diterbitkan. Periksa sambungan, atau lanjutkan tanpa konfirmasi pemilik.",
+      );
+    }
   }
 
   /**
@@ -179,9 +270,39 @@ export function LayarTimbang({
    * timbangannya harus diulang dari awal.
    */
   async function selesai() {
-    if (!bacaan || mengirim) return;
-    setMengirim(true);
+    if (!bacaan || mengirim || memeriksa) return;
     setGalat(null);
+
+    /*
+     * Kode dicocokkan lebih dulu, selagi belum ada yang ditandatangani.
+     *
+     * Ini semata kenyamanan: salah ketik jadi bisa diperbaiki. Yang
+     * menentukan catatan akhirnya tetap /api/ingest, yang mencocokkan
+     * ulang sendiri dari basis data. Layar ini tidak pernah menjadi
+     * sumber kebenaran atas dirinya sendiri.
+     */
+    if (!tanpaKode) {
+      setMemeriksa(true);
+      try {
+        const r = await fetch("/api/konfirmasi/periksa", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ warungId: warung.id, kode: konfirmasi }),
+        });
+        const j = await r.json();
+        if (j?.hasil !== "COCOK") {
+          setGalat(j?.pesan ?? "Kode tidak dapat diperiksa. Coba lagi.");
+          return;
+        }
+      } catch {
+        setGalat("Kode tidak dapat diperiksa. Periksa sambungan, lalu coba lagi.");
+        return;
+      } finally {
+        setMemeriksa(false);
+      }
+    }
+
+    setMengirim(true);
 
     // Batas waktu supaya tidak menggantung tanpa akhir di sinyal buruk.
     const pembatal = new AbortController();
@@ -204,7 +325,20 @@ export function LayarTimbang({
           lon: warung.lon,
           gps_accuracy_m: geser ? 20 : 12,
           stable_ms: bacaan.stable_ms,
-          confirm_code: konfirmasi,
+          // Sengaja tidak dikirim ketika pemilik tidak dapat membuka
+          // kodenya, supaya muatan yang ditandatangani alat menyatakan
+          // keadaan apa adanya — bukan mengaku ada konfirmasi yang tidak
+          // terjadi. Sebagai gantinya alasannya yang ikut ditandatangani,
+          // sehingga tidak dapat dikarang setelah penjemputan tercatat.
+          confirm_code: tanpaKode ? undefined : konfirmasi,
+          ...(tanpaKode && alasan
+            ? {
+                no_confirm_reason: alasan,
+                ...(alasan === "LAINNYA" && catatanAlasan.trim()
+                  ? { no_confirm_note: catatanAlasan.trim() }
+                  : {}),
+              }
+            : {}),
           qr_ok: true,
           battery_mv: bacaan.battery_mv,
           rssi_dbm: bacaan.rssi_dbm,
@@ -268,9 +402,18 @@ export function LayarTimbang({
           <p className="text-ink-2">
             {rupiah(hasil.nilaiRp)} dibayarkan ke warung
           </p>
-          <Pil nada={hasil.gpsOk ? "ok" : "warn"} titik>
-            {hasil.gpsOk ? `Lokasi cocok · ${hasil.jarakM} m` : `Lokasi meleset ${hasil.jarakM} m`}
-          </Pil>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            <Pil nada={hasil.gpsOk ? "ok" : "warn"} titik>
+              {hasil.gpsOk ? `Lokasi cocok · ${hasil.jarakM} m` : `Lokasi meleset ${hasil.jarakM} m`}
+            </Pil>
+            {/* Dibaca dari balasan server, bukan dari apa yang layar ini
+                kira sudah terjadi. */}
+            <Pil nada={hasil.caraKonfirmasi === "KODE_PEMILIK" ? "ok" : "warn"} titik>
+              {hasil.caraKonfirmasi === "KODE_PEMILIK"
+                ? "Dikonfirmasi pemilik"
+                : "Tanpa konfirmasi pemilik"}
+            </Pil>
+          </div>
           <p className="mt-2 max-w-xs text-[12px] text-ink-3">
             Bacaan dikirim dan ditandatangani oleh alat {deviceId}, lalu disambung
             ke rantai bukti.
@@ -473,16 +616,135 @@ export function LayarTimbang({
           <section className="rounded-card border border-line bg-surface p-4">
             <p className="text-[13px] font-medium">Konfirmasi pemilik warung</p>
             <p className="mt-1 text-[12px] text-ink-3">
-              Pemilik memasukkan kode agar bobot yang tercatat disetujui kedua pihak.
-              Kode terkirim ke nomor pemilik: <b className="tabular">{kodeBenar}</b>
+              Pemilik membuka kartu QR warungnya, lalu menyebutkan kode yang
+              muncul di layarnya. Kode itu berlaku untuk bobot ini saja.
             </p>
-            <input
-              value={konfirmasi}
-              onChange={(e) => setKonfirmasi(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              inputMode="numeric"
-              placeholder="••••"
-              className="tabular mt-3 h-14 w-full rounded-input border border-line bg-surface text-center text-2xl tracking-[0.5em]"
-            />
+
+            {tanpaKode ? (
+              /*
+                Alasannya wajib dipilih, bukan sekadar dilewati.
+
+                Tanpa ini, "tanpa konfirmasi" jadi keadaan buntu: tercatat,
+                tetapi tidak ada yang dapat menilai apakah masuk akal.
+                Alasan yang dipilih ikut ditandatangani alat dan terbaca
+                pemilik di halaman warungnya sendiri, sehingga alasan yang
+                mengada-ada dapat ia bantah.
+              */
+              <div className="mt-3">
+                <p className="text-[12px] font-medium">Kenapa kodenya tidak bisa dipakai?</p>
+                <p className="mt-0.5 text-[11px] leading-snug text-ink-3">
+                  Pilihan ini ikut ditandatangani alat dan ditampilkan di halaman
+                  pemilik warung, jadi ia dapat memeriksanya sendiri.
+                </p>
+
+                <div className="mt-2.5 flex flex-col gap-1.5">
+                  {ALASAN_TANPA_KODE.map((a) => (
+                    <label
+                      key={a}
+                      className={cn(
+                        "flex cursor-pointer items-start gap-2 rounded-btn border px-3 py-2 text-[12px]",
+                        alasan === a
+                          ? "border-accent bg-accent-soft"
+                          : "border-line bg-surface hover:border-ink-3",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="alasan-tanpa-kode"
+                        className="mt-0.5"
+                        checked={alasan === a}
+                        onChange={() => setAlasan(a)}
+                      />
+                      <span>{KATA_ALASAN[a].petugas}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {alasan === "LAINNYA" && (
+                  <input
+                    value={catatanAlasan}
+                    onChange={(e) => setCatatanAlasan(e.target.value.slice(0, 140))}
+                    placeholder="Tuliskan sebabnya"
+                    className="mt-2 h-11 w-full rounded-input border border-line bg-surface px-3 text-[13px]"
+                  />
+                )}
+
+                <div className="mt-2.5 rounded-btn bg-warn-bg px-3 py-2 text-[11px] leading-snug text-warn">
+                  Penjemputan tetap tercatat, tetapi ditandai tanpa konfirmasi
+                  pemilik di dasbor, halaman telusur, dan halaman pemilik.
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTanpaKode(false);
+                    setAlasan(null);
+                    setCatatanAlasan("");
+                    setGalat(null);
+                  }}
+                  className="mt-2.5 w-full text-center text-[12px] text-ink-3 underline underline-offset-2 hover:text-ink-2"
+                >
+                  Kembali memasukkan kode
+                </button>
+              </div>
+            ) : (
+              <>
+                {/*
+                  Kotak peraga.
+
+                  Di lapangan kode ini hanya muncul di layar pemilik. Ia
+                  ikut ditampilkan di sini semata supaya alurnya dapat
+                  diperagakan tanpa ponsel kedua — dan kotak ini menyebut
+                  dirinya apa adanya, tidak menyamar sebagai kiriman ke
+                  pemilik seperti tulisan yang dulu ada di tempat ini.
+                */}
+                <div className="mt-3 rounded-btn border border-dashed border-line bg-canvas px-3 py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                    Mode peraga
+                  </p>
+                  <p className="tabular mt-1 text-[19px] font-semibold leading-none">
+                    {kodePeraga ?? "····"}
+                  </p>
+                  <p className="mt-1.5 text-[11px] leading-snug text-ink-3">
+                    Ditampilkan agar dapat diperagakan tanpa ponsel kedua.
+                    Di lapangan kode ini hanya terbaca di layar pemilik.
+                  </p>
+                </div>
+
+                <input
+                  value={konfirmasi}
+                  onChange={(e) => setKonfirmasi(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  placeholder="••••"
+                  className="tabular mt-3 h-14 w-full rounded-input border border-line bg-surface text-center text-2xl tracking-[0.5em]"
+                />
+
+                {/*
+                  Jalan keluar yang sengaja disediakan.
+
+                  Persoalannya bukan kehadiran: jelantah disimpan di warung,
+                  jadi selalu ada orang yang menyerahkannya. Yang jadi soal
+                  adalah siapa yang dapat MEMBUKA halaman warungnya —
+                  pemiliknya bisa jadi tidak berponsel pintar, ponselnya
+                  mati, atau yang menyerahkan memang karyawan.
+
+                  Menutup jalan ini hanya memindahkan akal-akalan ke tempat
+                  yang tidak terlihat; yang dilakukan adalah mencatatnya
+                  berikut alasannya.
+                */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTanpaKode(true);
+                    setKonfirmasi("");
+                    setGalat(null);
+                  }}
+                  className="mt-3 w-full text-center text-[12px] text-ink-3 underline underline-offset-2 hover:text-ink-2"
+                >
+                  Pemilik tidak bisa membuka kode
+                </button>
+              </>
+            )}
           </section>
         )}
 
@@ -495,10 +757,25 @@ export function LayarTimbang({
         <Tombol
           besar
           className="w-full"
-          disabled={tahap !== "konfirmasi" || konfirmasi.length !== 4 || mengirim}
+          disabled={
+            tahap !== "konfirmasi" ||
+            (!tanpaKode && konfirmasi.length !== 4) ||
+            // Alasan wajib. "Lainnya" menuntut keterangan tertulis, sebab
+            // "lainnya" saja tidak memberi tahu pemilik apa pun.
+            (tanpaKode && !alasan) ||
+            (tanpaKode && alasan === "LAINNYA" && !catatanAlasan.trim()) ||
+            mengirim ||
+            memeriksa
+          }
           onClick={selesai}
         >
-          {mengirim ? "Mengirim…" : bacaan ? `Selesai · ${liter(bersihG)} liter` : "Selesai"}
+          {memeriksa
+            ? "Memeriksa kode…"
+            : mengirim
+              ? "Mengirim…"
+              : bacaan
+                ? `Selesai · ${liter(bersihG)} liter`
+                : "Selesai"}
         </Tombol>
         <Link
           href="/petugas"

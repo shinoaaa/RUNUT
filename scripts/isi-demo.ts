@@ -23,6 +23,7 @@ import {
   pesanTertandatangan,
   tandatangani,
 } from "../src/lib/bukti";
+import type { AlasanTanpaKode } from "../src/lib/alasan";
 
 const db = new PrismaClient();
 const kunci: Array<{ deviceId: string; privateKey: string }> = JSON.parse(
@@ -71,6 +72,10 @@ async function main() {
     gpsAkurasi: number;
     jarakM: number;
     waktu: Date;
+    /** Ikut `confirm_code` di muatan yang ditandatangani atau tidak. */
+    dikonfirmasi: boolean;
+    /** Terisi hanya ketika `dikonfirmasi` bernilai salah. */
+    alasan: AlasanTanpaKode | null;
   }
 
   const baris: Baris[] = [];
@@ -95,6 +100,43 @@ async function main() {
       const lon = w.lon + acak(-0.0004, 0.0004);
       const gpsAkurasi = bulat(6, 22);
 
+      /*
+       * Tidak semua penjemputan disetujui pemiliknya, dan itu memang
+       * begitu di lapangan: pemilik sedang ke pasar, ponselnya di laci,
+       * atau warungnya dijaga karyawan. Sebelumnya seluruh 490 baris
+       * diberi `confirm_code`, sehingga statistiknya keluar 100% —
+       * angka yang bukan hanya tidak nyata, tapi juga melemahkan
+       * halamannya sendiri: lencana yang selalu hijau tidak memberi
+       * tahu apa-apa.
+       *
+       * Yang menentukan tetap MUATAN yang ditandatangani, bukan kolom
+       * turunannya. Kalau pemilik tidak di tempat, `confirm_code`
+       * benar-benar tidak ikut ditandatangani — persis seperti yang
+       * dikirim layar timbang ketika petugas menekan "pemilik tidak di
+       * tempat". Dengan begitu kolom `caraKonfirmasi` tetap sah
+       * diturunkan dari bukti, bukan ditempelkan begitu saja.
+       */
+      const dikonfirmasi = Math.random() < 0.87;
+
+      /*
+       * Sebaran alasannya bukan rata-rata acak.
+       *
+       * "Tidak punya ponsel" dibuat paling sering karena sasaran program
+       * ini warteg dan rumah makan kecil, dan itu memang kendala yang
+       * paling nyata di sana. "Kartu hilang" dibuat paling jarang sebab
+       * kartunya baru saja dibagikan.
+       */
+      const undi = Math.random();
+      const alasan = !dikonfirmasi
+        ? undi < 0.4
+          ? "TIDAK_PUNYA_PONSEL"
+          : undi < 0.7
+            ? "PONSEL_TIDAK_SIAP"
+            : undi < 0.92
+              ? "DIWAKILKAN_KARYAWAN"
+              : "KARTU_HILANG"
+        : null;
+
       const a: Amplop = {
         device_id: k.deviceId,
         seq: s,
@@ -111,7 +153,9 @@ async function main() {
           lon,
           gps_accuracy_m: gpsAkurasi,
           stable_ms: bulat(1100, 2200),
-          confirm_code: String(bulat(1000, 9999)),
+          ...(dikonfirmasi
+            ? { confirm_code: String(bulat(1000, 9999)) }
+            : { no_confirm_reason: alasan }),
           qr_ok: true,
           battery_mv: bulat(3600, 4050),
           rssi_dbm: bulat(-95, -62),
@@ -145,6 +189,8 @@ async function main() {
         gpsAkurasi,
         jarakM: Math.round(jarakMeter(lat, lon, w.lat, w.lon)),
         waktu,
+        dikonfirmasi,
+        alasan,
       });
     }
   }
@@ -215,7 +261,11 @@ async function main() {
         jarakDariWarungM: b.jarakM,
         gpsOk: b.jarakM <= AMBANG_GPS_M,
         qrOk: true,
-        konfirmasiOk: true,
+        // Diturunkan dari muatan yang ditandatangani, bukan ditetapkan
+        // sendiri di sini. Lihat catatan pada `dikonfirmasi` di atas.
+        caraKonfirmasi: b.dikonfirmasi ? ("KODE_PEMILIK" as const) : ("TANPA_KODE" as const),
+        konfirmasiOk: b.dikonfirmasi, // USANG, lihat skema
+        alasanTanpaKode: b.alasan,
         hargaPerKg: rpPerKg,
         nilaiRp: Math.round((b.bersihG / 1000) * rpPerKg),
         dibuatAt: b.waktu,

@@ -51,7 +51,7 @@ export default async function HalamanTelusur({
                   beratBersihG: true,
                   dibuatAt: true,
                   gpsOk: true,
-                  konfirmasiOk: true,
+                  caraKonfirmasi: true,
                   warung: {
                     select: { nama: true, desa: true, kecamatan: { select: { nama: true } } },
                   },
@@ -84,6 +84,7 @@ export default async function HalamanTelusur({
   const petugas = [...new Set(penjemputan.map((p) => p.petugas))];
 
   const bertandaTangan = penjemputan.filter((p) => p.kejadianAlat?.sig).length;
+  const dikonfirmasi = penjemputan.filter((p) => p.caraKonfirmasi === "KODE_PEMILIK").length;
   const utuh = penjemputan.filter((p) => p.kejadianAlat?.terverifikasi).length;
   const rantaiUtuh = penjemputan.every((p) => !p.kejadianAlat?.catatan?.includes("RANTAI_PUTUS"));
 
@@ -200,6 +201,7 @@ export default async function HalamanTelusur({
                 <Th num>Volume</Th>
                 <Th>Tanggal</Th>
                 <Th>Petugas</Th>
+                <Th>Konfirmasi</Th>
               </tr>
             </thead>
             <tbody>
@@ -210,6 +212,15 @@ export default async function HalamanTelusur({
                   <Td num>{angka(p.beratBersihG / 1000 / ASUMSI.kg_per_liter, 1)} L</Td>
                   <Td>{tanggal(p.dibuatAt)}</Td>
                   <Td>{p.petugas}</Td>
+                  <Td>
+                    {/* Ditampilkan di halaman publik, bukan disembunyikan
+                        di dasbor internal. Pembeli yang menuntut bukti
+                        asal-usul berhak tahu bagian mana yang disetujui
+                        pemiliknya dan bagian mana yang tidak. */}
+                    <Pil nada={p.caraKonfirmasi === "KODE_PEMILIK" ? "ok" : "warn"}>
+                      {p.caraKonfirmasi === "KODE_PEMILIK" ? "Pemilik" : "Tanpa kode"}
+                    </Pil>
+                  </Td>
                 </tr>
               ))}
               <tr>
@@ -218,6 +229,7 @@ export default async function HalamanTelusur({
                 <Td num className="font-semibold">
                   {angka(totalBersihG / 1000 / ASUMSI.kg_per_liter, 1)} L
                 </Td>
+                <Td />
                 <Td />
                 <Td />
               </tr>
@@ -245,6 +257,16 @@ export default async function HalamanTelusur({
                   ? "Rantai bukti utuh — tidak ada catatan yang hilang atau diubah"
                   : "Ada sambungan rantai yang terputus pada lot ini",
                 rantaiUtuh,
+              ],
+              /*
+               * Angka ini sengaja tidak disembunyikan meski jarang
+               * mencapai seluruhnya. Pemilik warung bisa sedang tidak di
+               * tempat, dan menyamarkan itu sebagai "terkonfirmasi" akan
+               * membuat seluruh halaman ini kehilangan arti.
+               */
+              [
+                `${angka(dikonfirmasi)} dari ${angka(penjemputan.length)} penjemputan disetujui langsung oleh pemilik warung`,
+                dikonfirmasi === penjemputan.length,
               ],
             ].map(([teks, ok]) => (
               <li key={teks as string} className="flex items-start gap-2">
