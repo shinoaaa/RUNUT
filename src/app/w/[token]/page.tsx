@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pil, Tabel, Td, Th } from "@/components/ui";
 import { PanelPemilik } from "@/components/warung/PanelPemilik";
+import { SimpanTautan } from "@/components/warung/SimpanTautan";
 import { coba, db } from "@/lib/db";
 import { angka, liter, rupiah, tanggalJam } from "@/lib/format";
 import { KATA_ALASAN } from "@/lib/alasan";
+import { asalAplikasi } from "@/lib/asal";
 
 export const dynamic = "force-dynamic";
 
@@ -184,10 +186,12 @@ export default async function HalamanPemilikWarung({
           )}
         </section>
 
+        <SimpanTautan alamat={`${await asalAplikasi()}/w/${token}`} />
+
         <p className="px-1 pb-2 text-[11px] leading-relaxed text-ink-3">
-          Halaman ini terbuka lewat kartu QR warung Anda. Simpan kartunya, dan
-          jangan tempel di tempat yang terlihat umum — siapa pun yang
-          memindainya dapat melihat riwayat di atas.
+          Kartu QR warung Anda sebaiknya disimpan, bukan ditempel di tempat yang
+          terlihat umum. Stiker yang menempel di dinding memakai kode berbeda dan
+          tidak membuka halaman ini.
         </p>
       </div>
     </main>

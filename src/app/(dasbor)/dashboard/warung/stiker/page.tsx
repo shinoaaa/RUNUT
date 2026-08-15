@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
-import { headers } from "next/headers";
 import { TautanKembali } from "@/components/ui";
+import { asalAplikasi } from "@/lib/asal";
 import { coba, db } from "@/lib/db";
 import { KG_PER_LITER, statusWarung } from "@/lib/format";
 import { apakahJejaring } from "@/lib/jejaring";
@@ -11,20 +11,6 @@ export const dynamic = "force-dynamic";
 
 const MINGGU_PER_BULAN = 30 / 7;
 
-/**
- * Alamat aplikasi menurut permintaan yang sedang berjalan.
- *
- * Dibaca dari header, bukan ditulis tetap, supaya QR pada kartu pemilik
- * menunjuk ke tempat yang benar baik saat dicetak dari laptop
- * pengembangan maupun dari tayangan Vercel. Kartu yang tercetak dengan
- * alamat localhost tidak akan terbuka di ponsel siapa pun.
- */
-async function asalAplikasi() {
-  const h = await headers();
-  const inang = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const protokol = h.get("x-forwarded-proto") ?? (inang.startsWith("localhost") ? "http" : "https");
-  return `${protokol}://${inang}`;
-}
 
 /**
  * Lembar stiker QR untuk ditempel di warung.
