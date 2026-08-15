@@ -1,4 +1,4 @@
-import { KartuAngka, Kosong, Panel, Pil, Tabel, Td, Th } from "@/components/ui";
+import { KartuAngka, Kosong, Panel, Pil, Tabel, TautanTombol, Td, Th, kelasTombol } from "@/components/ui";
 import { coba, db } from "@/lib/db";
 import { angka, liter, rupiah, tanggalJam } from "@/lib/format";
 import { KATA_ALASAN } from "@/lib/alasan";
@@ -37,12 +37,23 @@ export default async function HalamanPenjemputan() {
 
   return (
     <div className="px-5 py-6 lg:px-8">
-      <header className="mb-5">
-        <h1 className="text-[26px] font-bold leading-tight">Penjemputan</h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-2">
-          Setiap baris di sini diturunkan dari satu kejadian alat yang bertanda
-          tangan. Bobotnya tidak pernah diketik siapa pun.
-        </p>
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight">Penjemputan</h1>
+          <p className="mt-1 max-w-2xl text-sm text-ink-2">
+            Setiap baris di sini diturunkan dari satu kejadian alat yang bertanda
+            tangan. Bobotnya tidak pernah diketik siapa pun.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {/* Unduhan berkas, jadi <a download> biasa — bukan navigasi. */}
+          <a href="/dashboard/penjemputan/ekspor" download className={kelasTombol("kedua")}>
+            Ekspor CSV · {angka(ringkas._count)}
+          </a>
+          <TautanTombol href="/dashboard/penjemputan/laporan" nada="kedua">
+            Laporan siap cetak
+          </TautanTombol>
+        </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

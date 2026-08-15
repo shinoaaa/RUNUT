@@ -12,6 +12,7 @@ import {
   Td,
   Th,
   cn,
+  kelasTombol,
 } from "@/components/ui";
 import { LABEL_STATUS, StatusWarung, angka } from "@/lib/format";
 import { LABEL_JENIS, type SaringJenis } from "@/lib/jejaring";
@@ -74,10 +75,11 @@ export function RegistriWarung({
 
   const jumlahJejaring = useMemo(() => data.filter((w) => w.jejaring).length, [data]);
 
-  // Lembar stiker mengikuti saringan yang sedang aktif. Penyaring di
-  // halaman ini sekaligus menjadi alat pemilih warung mana yang dicetak,
-  // sehingga tidak perlu kotak centang per baris.
-  const tautanStiker = (() => {
+  // Lembar stiker dan ekspor sama-sama mengikuti saringan yang sedang
+  // aktif. Penyaring di halaman ini sekaligus menjadi alat pemilih baris
+  // mana yang ikut, sehingga tidak perlu kotak centang per baris — dan
+  // yang terunduh selalu sama dengan yang barusan terlihat di layar.
+  const pertanyaan = (() => {
     const q = new URLSearchParams();
     if (filterKec) q.set("kec", filterKec);
     if (cari.trim()) q.set("cari", cari.trim());
@@ -85,8 +87,11 @@ export function RegistriWarung({
     if (st) q.set("status", st);
     if (filterJenis) q.set("jenis", filterJenis);
     const s = q.toString();
-    return `/dashboard/warung/stiker${s ? `?${s}` : ""}`;
+    return s ? `?${s}` : "";
   })();
+
+  const tautanStiker = `/dashboard/warung/stiker${pertanyaan}`;
+  const tautanEkspor = `/dashboard/warung/ekspor${pertanyaan}`;
 
   return (
     <div className="px-5 py-6 lg:px-8">
@@ -103,6 +108,16 @@ export function RegistriWarung({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* Unduhan berkas, bukan perpindahan halaman: dibiarkan sebagai
+              <a> biasa dengan `download` supaya peramban tidak mencoba
+              merender CSV-nya sebagai halaman. */}
+          <a
+            href={tautanEkspor}
+            download
+            className={kelasTombol("kedua")}
+          >
+            Ekspor CSV · {angka(tersaring.length)}
+          </a>
           <TautanTombol href={tautanStiker} nada="kedua">
             Cetak stiker · {angka(tersaring.length)}
           </TautanTombol>
