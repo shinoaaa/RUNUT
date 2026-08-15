@@ -249,8 +249,11 @@ export function LayarTimbang({
       const j = await r.json();
       if (j?.ok) setKodePeraga(String(j.kode));
       else
+        // Sebab dari server ikut disebut. Tanpa itu, kegagalannya tidak
+        // dapat ditelusuri dari lapangan maupun saat penjurian.
         setGalat(
-          "Kode konfirmasi gagal diterbitkan. Penjemputan masih bisa dilanjutkan tanpa konfirmasi pemilik.",
+          `Kode konfirmasi gagal diterbitkan — ${j?.pesan ?? `server membalas ${r.status}`}. ` +
+            `Penjemputan masih bisa dilanjutkan tanpa konfirmasi pemilik.`,
         );
     } catch {
       setGalat(
@@ -290,8 +293,26 @@ export function LayarTimbang({
           body: JSON.stringify({ warungId: warung.id, kode: konfirmasi }),
         });
         const j = await r.json();
-        if (j?.hasil !== "COCOK") {
-          setGalat(j?.pesan ?? "Kode tidak dapat diperiksa. Coba lagi.");
+
+        /*
+         * Galat sistem dibedakan dari vonis atas kodenya.
+         *
+         * Keduanya sempat tercampur: ketika server menolak permintaannya
+         * — misalnya karena sesi peran yang salah — layar ini menampilkan
+         * pesan penolakan itu apa adanya, sehingga petugas membaca
+         * "Bukan petugas lapangan" seolah-olah itu penilaian atas empat
+         * angka yang baru saja disebutkan pemilik warung.
+         */
+        if (j?.ok === false || !j?.hasil) {
+          setGalat(
+            `Kode tidak dapat diperiksa — ${j?.pesan ?? `server membalas ${r.status}`}. ` +
+              `Ini bukan soal kodenya. Coba lagi, atau lanjutkan tanpa konfirmasi pemilik.`,
+          );
+          return;
+        }
+
+        if (j.hasil !== "COCOK") {
+          setGalat(j?.pesan ?? "Kode tidak cocok. Coba lagi.");
           return;
         }
       } catch {

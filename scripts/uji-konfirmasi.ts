@@ -84,6 +84,40 @@ async function main() {
   const k1 = await minta(8060);
   cek("kode terbit", k1?.ok === true && /^\d{4}$/.test(k1?.kode ?? ""), k1?.kode);
 
+  /*
+   * --- 1b. semua peran yang boleh membuka layar timbang harus bisa ---
+   *
+   * Layar /petugas/jemput/[id] sengaja terbuka bagi semua peran yang
+   * sudah masuk, supaya operator dan pemda dapat menelusuri alurnya.
+   * Endpoint ini sempat lebih ketat daripada layar itu, sehingga
+   * halamannya terbuka tetapi kodenya gagal terbit — dan pesan
+   * galatnya terbaca seolah kode pemiliknya yang salah.
+   *
+   * Uji ini lolos dulu karena semuanya dijalankan sebagai PETUGAS saja.
+   */
+  for (const p of ["PETUGAS", "OPERATOR", "PEMDA", "ADMIN"] as const) {
+    const orang = await db.pengguna.findFirst({ where: { peran: p } });
+    if (!orang) continue;
+    const c = kukiSesi({ id: orang.id, nama: orang.nama, peran: orang.peran });
+    const r = await fetch(`${ASAL}/api/konfirmasi/minta`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: c },
+      body: JSON.stringify({ warungId: warung.id, beratBersihG: 8060 }),
+    }).then((x) => x.json());
+    cek(`${p} dapat menerbitkan kode`, r?.ok === true, r?.pesan ?? r?.kode);
+  }
+
+  const tanpaSesi = await fetch(`${ASAL}/api/konfirmasi/minta`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ warungId: warung.id, beratBersihG: 8060 }),
+  }).then((x) => x.json());
+  cek("tanpa sesi tetap DITOLAK", tanpaSesi?.ok !== true, tanpaSesi?.pesan);
+
+  // Sesi di atas menutup sesi milik k1, jadi terbitkan ulang.
+  const kBaru = await minta(8060);
+  k1.kode = kBaru.kode;
+
   /* --- 2. kode terbaca pemilik lewat token KARTU --- */
   const st = await fetch(`${ASAL}/api/warung/${warung.tokenPemilik}/status`).then((r) => r.json());
   cek("kode terbaca lewat token kartu pemilik", st?.sesi?.kode === k1.kode);

@@ -18,10 +18,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  // Sama seperti /api/konfirmasi/minta: cukup sudah masuk, tanpa syarat
+  // peran, supaya penjaganya tidak lebih ketat daripada layar timbang
+  // yang memang terbuka bagi semua peran.
   const sesi = await sesiSekarang();
   if (!sesi) return NextResponse.json({ ok: false, pesan: "Belum masuk" }, { status: 401 });
-  if (sesi.peran !== "PETUGAS" && sesi.peran !== "ADMIN")
-    return NextResponse.json({ ok: false, pesan: "Bukan petugas lapangan" }, { status: 403 });
 
   let badan: { warungId?: number; kode?: string };
   try {

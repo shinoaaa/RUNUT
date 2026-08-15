@@ -19,15 +19,24 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  // Rute API tidak ikut terjaga oleh penjaga halaman, jadi ia memeriksa
-  // sendiri. Alamat ini terbuka bagi siapa saja yang tahu menyebutnya.
+  /*
+   * Cukup "sudah masuk", tanpa syarat peran.
+   *
+   * Layar timbang sendiri sengaja terbuka bagi semua peran yang sudah
+   * masuk — lihat catatan di /petugas/jemput/[id], yang membiarkan
+   * operator dan pemda menelusuri alurnya. Menuntut peran PETUGAS di
+   * sini membuat penjaga alamat ini lebih ketat daripada layar yang
+   * dilayaninya: halamannya terbuka, kodenya gagal terbit, dan pesan
+   * galatnya menyesatkan sebab terbaca seperti vonis atas kode yang
+   * diketik.
+   *
+   * Melonggarkannya tidak menambah risiko: alamat saudaranya di jalur
+   * alat — /api/alat/bacaan dan /api/simulator/kirim — memang tidak
+   * menuntut sesi sama sekali, dan yang menjaga bobot tetap tanda
+   * tangan alat, bukan peran pemanggilnya.
+   */
   const sesi = await sesiSekarang();
   if (!sesi) return NextResponse.json({ ok: false, pesan: "Belum masuk" }, { status: 401 });
-  if (sesi.peran !== "PETUGAS" && sesi.peran !== "ADMIN")
-    return NextResponse.json(
-      { ok: false, pesan: "Hanya petugas lapangan yang menerbitkan kode" },
-      { status: 403 },
-    );
 
   let badan: { warungId?: number; beratBersihG?: number };
   try {
