@@ -68,7 +68,7 @@ export default async function Beranda() {
       <section className="border-b border-line">
         <div className="mx-auto max-w-5xl px-5 py-14 sm:py-20">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">
-            Program pemerintah daerah · Kabupaten Bekasi
+            Purwarupa · Studi kasus Kabupaten Bekasi
           </p>
           <h1 className="mt-3 max-w-2xl text-[32px] font-bold leading-[1.15] sm:text-[42px]">
             Memastikan minyak jelantah UMKM terkelola dengan baik
