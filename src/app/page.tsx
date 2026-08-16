@@ -71,7 +71,7 @@ export default async function Beranda() {
             Program pemerintah daerah · Kabupaten Bekasi
           </p>
           <h1 className="mt-3 max-w-2xl text-[32px] font-bold leading-[1.15] sm:text-[42px]">
-            Memastikan minyak jelantah UMKM tidak jatuh ke tangan yang salah
+            Memastikan minyak jelantah warung terkelola sampai tujuannya
           </h1>
           <p className="mt-4 max-w-xl text-[17px] leading-relaxed text-ink-2">
             Kami menjemputnya, menimbangnya dengan alat, dan mencatat asal-usulnya
