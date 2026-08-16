@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     template: "%s · RUNUT",
   },
   description:
-    "Memastikan minyak jelantah warung terkelola sampai tujuannya: dijemput, ditimbang dengan alat, dan dicatat asal-usulnya sampai ke pembeli.",
+    "Memastikan minyak jelantah UMKM kuliner terkelola dengan baik — dijemput, ditimbang dengan alat, dan dicatat asal-usulnya sampai ke pembeli.",
   applicationName: "RUNUT",
   icons: { icon: "/favicon.ico" },
 };
