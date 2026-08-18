@@ -79,13 +79,6 @@ export function Sidebar({
         {/* Dua jalan keluar yang berbeda: "Beranda" menuju halaman publik
             tanpa memutus sesi, "Keluar" memutus sesi lalu ke /masuk. */}
         <div className="mt-2 flex items-center gap-3">
-          <Link
-            href="/"
-            onClick={() => setBuka(false)}
-            className="text-[12px] text-white/60 underline underline-offset-4 hover:text-white"
-          >
-            Beranda
-          </Link>
           <form action={keluar}>
             <button
               type="submit"
