@@ -21,7 +21,7 @@ export interface Sesi {
 }
 
 const NAMA_COOKIE = "runut_sesi";
-const UMUR_DETIK = 60 * 60 * 24 * 7;
+const UMUR_DETIK = 60 * 60 * 3; // 3 jam
 
 function rahasia() {
   return process.env.AUTH_SECRET ?? "rahasia-pengembangan-yang-tidak-dipakai-di-produksi";

@@ -61,6 +61,7 @@ export const KETERANGAN_PERAN: Record<Peran, string> = {
  */
 export function bolehAkses(peran: Peran, path: string): boolean {
   if (peran === "ADMIN") return true;
+  if (path === "/dashboard") return true;
   return MENU_PERAN[peran].some((k) => k.isi.some((m) => m.href === path));
 }
 
