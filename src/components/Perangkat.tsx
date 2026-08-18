@@ -179,19 +179,7 @@ export function Perangkat({ daftar }: { daftar: BarisPerangkat[] }) {
         )}
       </Panel>
 
-      <Panel judul="Kenapa bukan blockchain" className="mt-4">
-        <p className="text-sm leading-relaxed text-ink-2">
-          Blockchain menjaga data agar tidak berubah <i>setelah</i> ditulis, tetapi
-          tidak menjamin data benar <i>pada saat</i> ditulis — sedangkan risiko
-          terbesar pada sistem ini justru berada di titik pencatatan.
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-ink-2">
-          Yang dipakai di sini adalah log berantai hash dengan dua penguatan: tiap
-          kejadian ditandatangani perangkat memakai kunci privatnya sendiri, dan
-          rantainya dimulai di perangkat, bukan di server. Untuk memalsukan data,
-          seseorang harus membongkar alatnya — bukan mengubah basis data.
-        </p>
-      </Panel>
+
     </div>
   );
 }

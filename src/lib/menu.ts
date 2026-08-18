@@ -38,7 +38,7 @@ export const MENU_PERAN: Record<Peran, Kelompok[]> = {
   ADMIN: [
     { kelompok: "Pantau", isi: [DASHBOARD, REGISTRI, PENJEMPUTAN] },
     { kelompok: "Kelola", isi: [LOT, PERANGKAT] },
-    { kelompok: "Alat bantu", isi: [SKENARIO, LAPANGAN, SIMULATOR] },
+    { kelompok: "Alat bantu", isi: [SKENARIO, SIMULATOR] },
   ],
 };
 
