@@ -84,7 +84,7 @@ export default async function HalamanOperator() {
               await buatLot(titikKumpul.id);
             }}
           >
-            <TombolBuatLot />
+            <TombolBuatLot jumlahKosong={belumMasukLot.length} />
           </form>
         )}
       </header>

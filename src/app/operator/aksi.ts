@@ -23,11 +23,27 @@ async function kodeLotBerikutnya() {
 export async function buatLot(titikKumpulId: number) {
   await pastikanKemampuan("lot:kelola");
 
+  // Cari setoran (trip) yang belum masuk lot manapun di titik kumpul ini
+  const tripMenunggu = await db.trip.findMany({
+    where: { 
+      status: "DISETOR",
+      titikKumpulId,
+      lotTrip: { none: {} }
+    },
+    select: { id: true, totalGTitikKumpul: true, totalGWarung: true }
+  });
+
+  const beratG = tripMenunggu.reduce((a, b) => a + (b.totalGTitikKumpul ?? b.totalGWarung), 0);
+
   const lot = await db.lot.create({
     data: {
       kode: await kodeLotBerikutnya(),
       titikKumpulId,
+      beratG,
       qrToken: randomBytes(9).toString("base64url"),
+      trip: {
+        create: tripMenunggu.map(t => ({ tripId: t.id }))
+      }
     },
   });
   redirect(`/operator/lot/${lot.id}`);
