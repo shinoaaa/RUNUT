@@ -10,6 +10,7 @@ import { serahkanLot, tutupLot, ubahIsiLot } from "@/app/operator/aksi";
 import { pastikanAkses } from "@/lib/sesi";
 
 import { TombolKembaliLot } from "@/components/operator/TombolKembaliLot";
+import { TombolHapusLot } from "@/components/operator/TombolHapusLot";
 
 export const dynamic = "force-dynamic";
 
@@ -273,6 +274,7 @@ export default async function HalamanLot({
                   Tutup lot
                 </Tombol>
               </form>
+              <TombolHapusLot lotId={lotId} jumlahIsi={tripDipakai.length} />
             </Panel>
           )}
 

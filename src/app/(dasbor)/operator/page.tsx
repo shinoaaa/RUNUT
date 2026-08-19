@@ -8,6 +8,7 @@ import {
   Td,
   Th,
   Tombol,
+  Paginasi,
 } from "@/components/ui";
 import { coba, db } from "@/lib/db";
 import { ASUMSI } from "@/lib/statistik";
@@ -25,13 +26,30 @@ const NADA_LOT = {
   DISERAHKAN: "ok",
 } as const;
 
-export default async function HalamanOperator() {
+export default async function HalamanOperator(props: {
+  searchParams?: Promise<{ pt?: string; pl?: string }>;
+}) {
   await pastikanAkses("/operator");
-  const [trip, lot, titikKumpul] = await coba(() => Promise.all([
+  const searchParams = await props.searchParams;
+  const pageTrip = Number(searchParams?.pt) || 1;
+  const pageLot = Number(searchParams?.pl) || 1;
+  const takeTrip = 10;
+  const takeLot = 10;
+  
+  const skipTrip = (pageTrip - 1) * takeTrip;
+  const skipLot = (pageLot - 1) * takeLot;
+  const [belumMasukLot, pagedTrip, totalTrip, pagedLot, totalLot, titikKumpul] = await coba(() => Promise.all([
+    // Untuk stats atas
+    db.trip.findMany({
+      where: { status: "DISETOR", lotTrip: { none: {} } },
+      select: { totalGTitikKumpul: true, totalGWarung: true }
+    }),
+    // Tabel Setoran Masuk (paged)
     db.trip.findMany({
       where: { status: "DISETOR" },
       orderBy: { tanggal: "desc" },
-      take: 40,
+      skip: skipTrip,
+      take: takeTrip,
       select: {
         id: true,
         tanggal: true,
@@ -43,9 +61,12 @@ export default async function HalamanOperator() {
         _count: { select: { penjemputan: true } },
       },
     }),
+    db.trip.count({ where: { status: "DISETOR" } }),
+    // Tabel Lot (paged)
     db.lot.findMany({
       orderBy: { id: "desc" },
-      take: 15,
+      skip: skipLot,
+      take: takeLot,
       select: {
         id: true,
         kode: true,
@@ -56,17 +77,22 @@ export default async function HalamanOperator() {
         _count: { select: { trip: true } },
       },
     }),
+    db.lot.count(),
     db.titikKumpul.findFirst({ select: { id: true, nama: true } }),
   ]));
 
-  const belumMasukLot = trip.filter((t) => t.lotTrip.length === 0);
   const stokG = belumMasukLot.reduce(
     (a, t) => a + (t.totalGTitikKumpul ?? t.totalGWarung),
     0,
   );
-  const perluTinjau = trip.filter(
-    (t) => (t.susutPersen ?? 0) > ASUMSI.ambang_susut_persen,
-  );
+  
+  // Hitung trip dengan susut tinggi secara global
+  const perluTinjauTotal = await db.trip.count({
+    where: { 
+      status: "DISETOR", 
+      susutPersen: { gt: ASUMSI.ambang_susut_persen } 
+    }
+  });
 
   return (
     <div className="px-5 py-6 lg:px-8">
@@ -98,20 +124,20 @@ export default async function HalamanOperator() {
         />
         <KartuAngka
           label="Setoran Diterima"
-          angka={angka(trip.length)}
-          catatan="40 terakhir"
+          angka={angka(totalTrip)}
+          catatan="Total setoran"
         />
         <KartuAngka
           label="Perlu Ditinjau"
-          angka={angka(perluTinjau.length)}
+          angka={angka(perluTinjauTotal)}
           catatan={`susut di atas ${angka(ASUMSI.ambang_susut_persen, 1)}%`}
-          arah={perluTinjau.length > 0 ? "turun" : undefined}
+          arah={perluTinjauTotal > 0 ? "turun" : undefined}
         />
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1.5fr_1fr]">
         <Panel judul="Setoran Masuk" padat>
-          {trip.length === 0 ? (
+          {pagedTrip.length === 0 ? (
             <Kosong
               judul="Belum ada setoran"
               keterangan="Setoran muncul di sini setelah petugas menimbang muatannya di titik kumpul."
@@ -129,7 +155,7 @@ export default async function HalamanOperator() {
                 </tr>
               </thead>
               <tbody>
-                {trip.slice(0, 20).map((t) => {
+                {pagedTrip.map((t) => {
                   const susut = t.susutPersen ?? 0;
                   const anomali = susut > ASUMSI.ambang_susut_persen;
                   return (
@@ -162,17 +188,18 @@ export default async function HalamanOperator() {
               </tbody>
             </Tabel>
           )}
+          <Paginasi page={pageTrip} total={Math.ceil(totalTrip / takeTrip)} paramName="pt" />
         </Panel>
 
         <Panel judul="Lot Terakhir" padat>
-          {lot.length === 0 ? (
+          {pagedLot.length === 0 ? (
             <Kosong
               judul="Belum ada lot"
               keterangan="Buat lot untuk menggabungkan beberapa setoran sebelum diserahkan ke pengolah."
             />
           ) : (
             <ul className="divide-y divide-line">
-              {lot.map((l) => (
+              {pagedLot.map((l) => (
                 <li key={l.id}>
                   <Link
                     href={`/operator/lot/${l.id}`}
@@ -194,6 +221,7 @@ export default async function HalamanOperator() {
               ))}
             </ul>
           )}
+          <Paginasi page={pageLot} total={Math.ceil(totalLot / takeLot)} paramName="pl" />
         </Panel>
       </div>
     </div>

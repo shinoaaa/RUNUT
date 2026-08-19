@@ -376,3 +376,4 @@ export function Kosong({
     </div>
   );
 }
+export { Paginasi } from './ui/Paginasi';
