@@ -51,7 +51,7 @@ export default async function HalamanPemilikWarung({
   );
   if (!warung?.aktif) notFound();
 
-  const isAuth = cookies().get(`pinAuth_${token}`)?.value === "true";
+  const isAuth = (await cookies()).get(`pinAuth_${token}`)?.value === "true";
   
   if (warung.pin && !isAuth) {
     return <PinGate token={token} />;

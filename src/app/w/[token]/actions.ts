@@ -15,7 +15,7 @@ export async function cekPin(token: string, pin: string) {
   }
 
   // Set cookie for 30 days
-  cookies().set(`pinAuth_${token}`, "true", { maxAge: 60 * 60 * 24 * 30, httpOnly: true });
+  (await cookies()).set(`pinAuth_${token}`, "true", { maxAge: 60 * 60 * 24 * 30, httpOnly: true });
   return { success: true };
 }
 
@@ -29,7 +29,7 @@ export async function ubahPin(token: string, pinBaru: string) {
     data: { pin: pinBaru },
   });
 
-  cookies().set(`pinAuth_${token}`, "true", { maxAge: 60 * 60 * 24 * 30, httpOnly: true });
+  (await cookies()).set(`pinAuth_${token}`, "true", { maxAge: 60 * 60 * 24 * 30, httpOnly: true });
   revalidatePath(`/w/${token}`);
   return { success: true };
 }
