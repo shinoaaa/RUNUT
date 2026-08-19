@@ -87,6 +87,16 @@ export async function tutupLot(lotId: number) {
   revalidatePath(`/operator/lot/${lotId}`);
 }
 
+export async function hapusLotKosong(lotId: number) {
+  await pastikanKemampuan("lot:kelola");
+  
+  // Hanya pastikan aman: cek apakah trip-nya kosong
+  const isi = await db.lotTrip.count({ where: { lotId } });
+  if (isi === 0) {
+    await db.lot.delete({ where: { id: lotId } });
+  }
+}
+
 export async function serahkanLot(lotId: number, form: FormData) {
   await pastikanKemampuan("lot:kelola");
 

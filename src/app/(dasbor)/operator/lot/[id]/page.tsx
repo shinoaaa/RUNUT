@@ -9,6 +9,8 @@ import { angka, rupiah, tanggal, tanggalJam } from "@/lib/format";
 import { serahkanLot, tutupLot, ubahIsiLot } from "@/app/operator/aksi";
 import { pastikanAkses } from "@/lib/sesi";
 
+import { TombolKembaliLot } from "@/components/operator/TombolKembaliLot";
+
 export const dynamic = "force-dynamic";
 
 export default async function HalamanLot({
@@ -59,6 +61,7 @@ export default async function HalamanLot({
 
   const terbuka = lot.status === "TERBUKA";
   const tripDipakai = lot.trip.map((t) => t.trip);
+  const isKosong = terbuka && tripDipakai.length === 0;
   const idDipakai = new Set(tripDipakai.map((t) => t.id));
 
   const tersedia = terbuka
@@ -102,7 +105,7 @@ export default async function HalamanLot({
     <div className="px-5 py-6 lg:px-8">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <TautanKembali href="/operator">Titik Kumpul</TautanKembali>
+          <TombolKembaliLot href="/operator" isKosong={isKosong} lotId={lotId} />
           <h1 className="mt-1 font-mono text-[26px] font-bold leading-tight">{lot.kode}</h1>
           <p className="mt-1 text-sm text-ink-2">
             {lot.titikKumpul.nama} · dibuat {tanggal(lot.dibuatAt)}
