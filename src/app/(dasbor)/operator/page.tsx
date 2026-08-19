@@ -14,6 +14,7 @@ import { ASUMSI } from "@/lib/statistik";
 import { angka, liter, tanggal } from "@/lib/format";
 import { buatLot } from "@/app/operator/aksi";
 import { pastikanAkses } from "@/lib/sesi";
+import { TombolBuatLot } from "@/components/operator/TombolBuatLot";
 
 export const metadata = { title: "Titik Kumpul" };
 export const dynamic = "force-dynamic";
@@ -83,7 +84,7 @@ export default async function HalamanOperator() {
               await buatLot(titikKumpul.id);
             }}
           >
-            <Tombol type="submit">Buat lot baru</Tombol>
+            <TombolBuatLot />
           </form>
         )}
       </header>
