@@ -1,9 +1,12 @@
+import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pil, Tabel, Td, Th } from "@/components/ui";
 import { PanelPemilik } from "@/components/warung/PanelPemilik";
 import { SimpanTautan } from "@/components/warung/SimpanTautan";
+import { PinGate } from "@/components/warung/PinGate";
+import { SetPinPanel } from "@/components/warung/SetPinPanel";
 import { coba, db } from "@/lib/db";
 import { angka, liter, rupiah, tanggalJam } from "@/lib/format";
 import { KATA_ALASAN } from "@/lib/alasan";
@@ -11,33 +14,6 @@ import { asalAplikasi } from "@/lib/asal";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Halaman pemilik warung. Tanpa akun, tanpa pasang aplikasi.
- *
- * Bab 3.3 proposal mendaftarkan pemilik warung sebagai satu dari empat
- * pengguna sistem, tetapi sampai sekarang ia satu-satunya yang tidak
- * punya layar. Inilah layarnya.
- *
- * MENGAPA TANPA AKUN
- *
- * Sasarannya warteg dan rumah makan kecil. Menuntut mereka mendaftar,
- * menghafal sandi, dan mengurus lupa sandi berarti menaruh beban pada
- * pihak yang paling tidak punya insentif — persis yang sudah ditolak
- * ketika gagasan "minta UMKM isi formulir" dibuang. Dan akibatnya fatal
- * bagi konfirmasi: kalau pemilik tidak pernah masuk, kodenya tidak punya
- * layar untuk muncul, dan pengamannya mati bukan karena rusak melainkan
- * karena tidak terpakai.
- *
- * Yang menggantikan akun adalah kartu QR cetak. Ia benda fisik yang ada
- * di warung, jadi ponsel boleh ganti atau hilang tanpa menutup jalan
- * masuk — sesuatu yang tidak berlaku bagi sandi yang terlupa.
- *
- * MENGAPA BUKAN STIKER TEMBOKNYA
- *
- * Stiker tembok memuat token telanjang tanpa alamat, jadi orang lewat
- * yang memindainya hanya melihat tulisan acak. Halaman ini memuat
- * pendapatan warung; alamatnya tidak boleh tertempel di dinding.
- */
 export default async function HalamanPemilikWarung({
   params,
 }: {
@@ -47,16 +23,13 @@ export default async function HalamanPemilikWarung({
 
   const warung = await coba(() =>
     db.warung.findUnique({
-      // tokenPemilik, BUKAN qrToken. Yang terakhir itu isi stiker tembok
-      // yang dipindai petugas tiap menjemput; memakainya di sini berarti
-      // setiap petugas memegang kunci halaman ini untuk setiap warung
-      // yang pernah ia datangi.
       where: { tokenPemilik: token },
       select: {
         id: true,
         nama: true,
         alamat: true,
         aktif: true,
+        pin: true,
         kecamatan: { select: { nama: true } },
         permintaan: { where: { status: "BARU" }, select: { id: true }, take: 1 },
         penjemputan: {
@@ -77,6 +50,12 @@ export default async function HalamanPemilikWarung({
     }),
   );
   if (!warung?.aktif) notFound();
+
+  const isAuth = cookies().get(`pinAuth_${token}`)?.value === "true";
+  
+  if (warung.pin && !isAuth) {
+    return <PinGate token={token} />;
+  }
 
   // Ringkasan dihitung atas SELURUH riwayat, bukan atas dua belas baris
   // yang kebetulan ditampilkan.
@@ -115,6 +94,8 @@ export default async function HalamanPemilikWarung({
 
       <div className="mx-auto flex max-w-2xl flex-col gap-4 px-5 py-5">
         <PanelPemilik token={token} adaPermintaan={warung.permintaan.length > 0} />
+        
+        <SetPinPanel token={token} hasPin={!!warung.pin} />
 
         {/* ringkasan pendapatan */}
         <div className="grid grid-cols-3 gap-3">

@@ -1,6 +1,6 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -84,7 +84,28 @@ export async function serahkanLot(lotId: number, form: FormData) {
       diserahkanAt: new Date(),
       offtaker: offtaker || null,
       hargaJual: hargaJual || null,
+      // Kode serah terima diterbitkan di sini, bukan saat lot ditutup,
+      // sebab yang perlu dibuktikan penerimaannya — dan penerimaan baru
+      // ada setelah muatannya benar-benar diserahkan.
+      kodeSerahTerima: kodeSerahTerimaBaru(),
+      percobaanTerima: 0,
+      diterimaAt: null,
     },
   });
   revalidatePath(`/operator/lot/${lotId}`);
+}
+
+/**
+ * Enam huruf dari abjad yang sudah dibuang huruf-huruf bermakna ganda.
+ *
+ * Kode ini dibacakan orang dari selembar surat, sering di gudang yang
+ * penerangannya seadanya. Huruf I, O, dan angka 1 serta 0 dibuang karena
+ * paling sering tertukar saat dibaca ulang, dan satu huruf salah berarti
+ * penerimaan yang sah ditolak sistem.
+ */
+function kodeSerahTerimaBaru() {
+  const abjad = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let kode = "";
+  for (let i = 0; i < 6; i++) kode += abjad[randomInt(abjad.length)];
+  return kode;
 }

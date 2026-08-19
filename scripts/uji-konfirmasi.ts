@@ -199,6 +199,39 @@ async function main() {
   cek("percobaan habis menutup sesi", terakhir?.hasil === "HABIS", terakhir?.hasil);
   cek("kode benar pun tidak lagi diterima", (await periksa(k2.kode))?.hasil === "HABIS");
 
+  /*
+   * --- 11. kode serah terima tidak boleh bocor di halaman publik ---
+   *
+   * Halaman telusur terbuka bagi siapa saja yang memindai QR pada surat
+   * serah terima. Kalau kodenya ikut tercetak di halaman itu, siapa pun
+   * yang membuka halamannya bisa mengonfirmasi penerimaan tanpa pernah
+   * menerima muatannya — dan konfirmasi itu kehilangan seluruh gunanya,
+   * persis seperti kode konfirmasi warung sebelum diperbaiki.
+   */
+  const lotSiap = await db.lot.findFirst({
+    where: { status: "DISERAHKAN", kodeSerahTerima: { not: null } },
+    orderBy: { dibuatAt: "desc" },
+    select: { qrToken: true, kodeSerahTerima: true, diterimaAt: true },
+  });
+
+  if (lotSiap) {
+    const halaman = await fetch(`${ASAL}/telusur/${lotSiap.qrToken}`);
+    const isi = await halaman.text();
+    cek("halaman telusur merender", halaman.status === 200, `HTTP ${halaman.status}`);
+    cek(
+      "kode serah terima TIDAK bocor di halaman publik",
+      !isi.includes(lotSiap.kodeSerahTerima!),
+    );
+    cek(
+      lotSiap.diterimaAt ? "lot terkonfirmasi menampilkan penandanya" : "kotak konfirmasi tersedia",
+      lotSiap.diterimaAt
+        ? isi.includes("Penerimaan dikonfirmasi")
+        : isi.includes("Konfirmasi penerimaan"),
+    );
+  } else {
+    cek("ada lot diserahkan untuk diuji", false, "jalankan scripts/buat-lot-demo.ts dulu");
+  }
+
   console.log(`\n  ${lulus} lulus · ${gagal} gagal\n`);
   await db.$disconnect();
   process.exit(gagal ? 1 : 0);

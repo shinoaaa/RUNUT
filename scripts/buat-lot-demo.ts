@@ -3,10 +3,18 @@
  * supaya halaman telusur punya isi untuk diperagakan.
  */
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
+
+/** Sama dengan yang dipakai serahkanLot: tanpa huruf yang bermakna ganda. */
+function kodeSerahTerima() {
+  const abjad = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let kode = "";
+  for (let i = 0; i < 6; i++) kode += abjad[randomInt(abjad.length)];
+  return kode;
+}
 
 async function main() {
   const titikKumpul = await db.titikKumpul.findFirst();
@@ -35,6 +43,10 @@ async function main() {
       diserahkanAt: new Date(),
       offtaker: "Pengolah Terdaftar",
       hargaJual: 7500,
+      // Lot contoh sengaja DIBIARKAN belum dikonfirmasi penerimaannya,
+      // supaya kotak konfirmasi di halaman telusur bisa diperagakan
+      // langsung di depan juri. Kodenya dicetak di keluaran skrip ini.
+      kodeSerahTerima: kodeSerahTerima(),
       trip: { create: trip.map((t) => ({ tripId: t.id })) },
     },
   });
@@ -49,6 +61,7 @@ async function main() {
   console.log(`  berat        : ${(beratG / 1000).toFixed(1)} kg`);
   console.log(`  token telusur: ${lot.qrToken}`);
   console.log(`  tautan       : /telusur/${lot.qrToken}`);
+  console.log(`  KODE SERAH TERIMA: ${lot.kodeSerahTerima}   <- buat memperagakan konfirmasi penerimaan`);
   await db.$disconnect();
 }
 

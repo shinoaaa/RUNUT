@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createHash } from "node:crypto";
 import { Panel, Pil, Tabel, Td, Th, TautanKembali } from "@/components/ui";
+import { KonfirmasiTerima } from "@/components/KonfirmasiTerima";
 import { coba, db } from "@/lib/db";
 import { ASUMSI } from "@/lib/statistik";
 import { angka, tanggal, tanggalJam } from "@/lib/format";
@@ -36,6 +37,7 @@ export default async function HalamanTelusur({
       dibuatAt: true,
       ditutupAt: true,
       diserahkanAt: true,
+      diterimaAt: true,
       titikKumpul: { select: { nama: true, kecamatan: { select: { nama: true } } } },
       trip: {
         select: {
@@ -279,6 +281,14 @@ export default async function HalamanTelusur({
             Hash rantai terakhir: {hashTerakhir.slice(0, 32)}…
           </p>
         </section>
+
+        {/* Ujung hilir rantainya. Penyerahan yang tercatat sepihak oleh
+            operator kini bisa dibenarkan oleh pihak yang menerimanya. */}
+        <KonfirmasiTerima
+          token={token}
+          diterimaAt={lot.diterimaAt}
+          bisaDikonfirmasi={lot.status === "DISERAHKAN"}
+        />
 
         <p className="px-1 text-[12px] leading-relaxed text-ink-3">
           Data dihasilkan oleh perangkat pengukur di lapangan, ditandatangani di alat,

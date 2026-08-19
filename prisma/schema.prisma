@@ -184,6 +184,7 @@ model Warung {
   /// mengubah isi stiker temboknya, sehingga stikernya harus dicetak
   /// dan ditempel ulang padahal yang hilang cuma kartunya.
   tokenPemilik String @unique
+  pin          String?
 
   kelasSkala      KelasSkala @default(KECIL)
   estimasiLMinggu Float      @default(0)
@@ -459,6 +460,24 @@ model Lot {
   dibuatAt     DateTime  @default(now())
   ditutupAt    DateTime?
   diserahkanAt DateTime?
+
+  /// Kode enam huruf yang diterbitkan server saat lot diserahkan, lalu
+  /// ditulis pada surat serah terima yang dibawa bersama muatannya.
+  ///
+  /// Sebelum ini penyerahan dicatat sepihak oleh operator: ia bisa
+  /// menuliskan lot sudah diserahkan kepada siapa pun dengan harga
+  /// berapa pun tanpa pihak penerima pernah menyentuh apa-apa. Dengan
+  /// kode ini, penerima memindai QR pada suratnya lalu menyebutkan
+  /// kodenya, sehingga penerimaan punya jejak dari sisi penerima juga.
+  ///
+  /// Yang dibuktikan kode ini adalah PEMEGANG SURATNYA, bukan identitas
+  /// perusahaannya. Itu batas yang sama dengan kartu pemilik warung, dan
+  /// sebaiknya disebut apa adanya kalau ditanya.
+  kodeSerahTerima String?
+  diterimaAt      DateTime?
+
+  /// Enam huruf hanya berarti kalau tebakannya dibatasi.
+  percobaanTerima Int @default(0)
 
   trip LotTrip[]
 

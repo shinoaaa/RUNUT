@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import { KartuAngka, Panel, Pil, Tabel, Td, Th, TautanKembali, Tombol } from "@/components/ui";
 import { coba, db } from "@/lib/db";
 import { ASUMSI } from "@/lib/statistik";
-import { angka, rupiah, tanggal } from "@/lib/format";
+import { angka, rupiah, tanggal, tanggalJam } from "@/lib/format";
 import { serahkanLot, tutupLot, ubahIsiLot } from "@/app/operator/aksi";
 import { pastikanAkses } from "@/lib/sesi";
 
@@ -33,6 +33,8 @@ export default async function HalamanLot({
       dibuatAt: true,
       ditutupAt: true,
       diserahkanAt: true,
+      kodeSerahTerima: true,
+      diterimaAt: true,
       titikKumpul: { select: { nama: true } },
       trip: {
         select: {
@@ -321,6 +323,31 @@ export default async function HalamanLot({
                   </div>
                 ))}
               </dl>
+
+              {/*
+                Kode serah terima ditulis pada surat yang dibawa bersama
+                muatannya. Penerima memindai QR di surat itu, memasukkan
+                kodenya, dan penerimaannya tercatat dari sisi penerima —
+                bukan cuma dari catatan sepihak operator.
+              */}
+              {lot.diterimaAt ? (
+                <div className="mt-3 rounded-btn bg-ok-bg px-3 py-2.5 text-[13px] text-ok">
+                  Penerimaan dikonfirmasi pengolah pada {tanggalJam(lot.diterimaAt)}.
+                </div>
+              ) : (
+                <div className="mt-3 rounded-card border border-dashed border-line-strong p-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-ink-3">
+                    Kode serah terima
+                  </p>
+                  <p className="tabular mt-1 font-mono text-[22px] font-bold tracking-[0.2em] text-brand">
+                    {lot.kodeSerahTerima ?? "——————"}
+                  </p>
+                  <p className="mt-1.5 text-[11px] leading-snug text-ink-3">
+                    Tulis kode ini pada surat serah terima. Pengolah memindai QR di
+                    surat, memasukkan kodenya, lalu penerimaannya tercatat di sini.
+                  </p>
+                </div>
+              )}
             </Panel>
           )}
         </div>
