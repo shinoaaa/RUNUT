@@ -9,8 +9,17 @@ import { pastikanKemampuan } from "@/lib/sesi";
 /** Kode lot: BKS-2026-0001, urut per tahun. */
 async function kodeLotBerikutnya() {
   const tahun = new Date().getFullYear();
-  const jumlah = await db.lot.count({ where: { kode: { startsWith: `BKS-${tahun}-` } } });
-  return `BKS-${tahun}-${String(jumlah + 1).padStart(4, "0")}`;
+  const awalan = `BKS-${tahun}-`;
+  
+  const lotTerakhir = await db.lot.findFirst({
+    where: { kode: { startsWith: awalan } },
+    orderBy: { kode: "desc" },
+  });
+
+  if (!lotTerakhir) return `${awalan}0001`;
+
+  const urutan = parseInt(lotTerakhir.kode.replace(awalan, ""), 10) || 0;
+  return `${awalan}${String(urutan + 1).padStart(4, "0")}`;
 }
 
 /*
