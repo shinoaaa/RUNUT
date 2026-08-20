@@ -8,7 +8,9 @@ import {
   Td,
   Th,
   Tombol,
+  Tombol,
   Paginasi,
+  FilterPilihan,
 } from "@/components/ui";
 import { coba, db } from "@/lib/db";
 import { ASUMSI } from "@/lib/statistik";
@@ -27,17 +29,27 @@ const NADA_LOT = {
 } as const;
 
 export default async function HalamanOperator(props: {
-  searchParams?: Promise<{ pt?: string; pl?: string }>;
+  searchParams?: Promise<{ pt?: string; pl?: string; ft?: string; fl?: string }>;
 }) {
   await pastikanAkses("/operator");
   const searchParams = await props.searchParams;
   const pageTrip = Number(searchParams?.pt) || 1;
   const pageLot = Number(searchParams?.pl) || 1;
+  const filterTrip = searchParams?.ft || "";
+  const filterLot = searchParams?.fl || "";
   const takeTrip = 10;
   const takeLot = 10;
   
   const skipTrip = (pageTrip - 1) * takeTrip;
   const skipLot = (pageLot - 1) * takeLot;
+
+  const whereTrip: any = { status: "DISETOR" };
+  if (filterTrip === "menunggu") whereTrip.lotTrip = { none: {} };
+  else if (filterTrip === "masuk_lot") whereTrip.lotTrip = { some: {} };
+
+  const whereLot: any = {};
+  if (filterLot) whereLot.status = filterLot;
+
   const [belumMasukLot, pagedTrip, totalTrip, pagedLot, totalLot, titikKumpul] = await coba(() => Promise.all([
     // Untuk stats atas
     db.trip.findMany({
@@ -46,7 +58,7 @@ export default async function HalamanOperator(props: {
     }),
     // Tabel Setoran Masuk (paged)
     db.trip.findMany({
-      where: { status: "DISETOR" },
+      where: whereTrip,
       orderBy: { tanggal: "desc" },
       skip: skipTrip,
       take: takeTrip,
@@ -61,9 +73,10 @@ export default async function HalamanOperator(props: {
         _count: { select: { penjemputan: true } },
       },
     }),
-    db.trip.count({ where: { status: "DISETOR" } }),
+    db.trip.count({ where: whereTrip }),
     // Tabel Lot (paged)
     db.lot.findMany({
+      where: whereLot,
       orderBy: { id: "desc" },
       skip: skipLot,
       take: takeLot,
@@ -77,7 +90,7 @@ export default async function HalamanOperator(props: {
         _count: { select: { trip: true } },
       },
     }),
-    db.lot.count(),
+    db.lot.count({ where: whereLot }),
     db.titikKumpul.findFirst({ select: { id: true, nama: true } }),
   ]));
 
@@ -136,7 +149,20 @@ export default async function HalamanOperator(props: {
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-        <Panel judul="Setoran Masuk" padat>
+        <Panel
+          judul="Setoran Masuk"
+          aksi={
+            <FilterPilihan
+              paramKey="ft"
+              value={filterTrip}
+              options={[
+                { label: "Menunggu", value: "menunggu" },
+                { label: "Masuk lot", value: "masuk_lot" },
+              ]}
+            />
+          }
+          padat
+        >
           {pagedTrip.length === 0 ? (
             <Kosong
               judul="Belum ada setoran"
@@ -191,7 +217,21 @@ export default async function HalamanOperator(props: {
           <Paginasi page={pageTrip} total={Math.ceil(totalTrip / takeTrip)} paramName="pt" />
         </Panel>
 
-        <Panel judul="Lot Terakhir" padat>
+        <Panel
+          judul="Lot Terakhir"
+          aksi={
+            <FilterPilihan
+              paramKey="fl"
+              value={filterLot}
+              options={[
+                { label: "Terbuka", value: "TERBUKA" },
+                { label: "Tertutup", value: "TERTUTUP" },
+                { label: "Diserahkan", value: "DISERAHKAN" },
+              ]}
+            />
+          }
+          padat
+        >
           {pagedLot.length === 0 ? (
             <Kosong
               judul="Belum ada lot"

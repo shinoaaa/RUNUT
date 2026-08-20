@@ -377,3 +377,4 @@ export function Kosong({
   );
 }
 export { Paginasi } from './ui/Paginasi';
+export { FilterPilihan } from './ui/FilterPilihan';
