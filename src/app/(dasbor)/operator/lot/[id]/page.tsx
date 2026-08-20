@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { KartuAngka, Panel, Pil, Tabel, Td, Th, TautanKembali, Tombol } from "@/components/ui";
@@ -95,7 +96,12 @@ export default async function HalamanLot({
     0,
   );
 
-  const tautanTelusur = `/telusur/${lot.qrToken}`;
+  const heads = await headers();
+  const host = heads.get("host") || "localhost:3000";
+  const proto = heads.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+  const asal = `${proto}://${host}`;
+
+  const tautanTelusur = `${asal}/telusur/${lot.qrToken}`;
   const qr = await QRCode.toDataURL(tautanTelusur, {
     margin: 1,
     width: 320,
