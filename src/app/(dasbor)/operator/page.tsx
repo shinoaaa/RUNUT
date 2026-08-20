@@ -8,7 +8,6 @@ import {
   Td,
   Th,
   Tombol,
-  Tombol,
   Paginasi,
   FilterPilihan,
 } from "@/components/ui";
